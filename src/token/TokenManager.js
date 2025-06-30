@@ -2,7 +2,7 @@ import { createWalletClient, http, parseUnits, formatUnits, encodeFunctionData }
 import { privateKeyToAccount } from 'viem/accounts';
 import { SolidityCompiler } from '../compiler/SolidityCompiler.js';
 
-export class UmiTokenManager {
+export class TokenManager {
   constructor(client, chain) {
     this.client = client;
     this.chain = chain;
