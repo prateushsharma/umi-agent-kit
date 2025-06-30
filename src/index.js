@@ -4,4 +4,5 @@ export { WalletManager } from './wallet/WalletManager.js';
 export { UmiClient } from './client/UmiClient.js';
 export { TransferManager } from './transfer/TransferManager.js';
 export { TokenManager } from './token/TokenManager.js';
+export { SolidityCompiler } from './compiler/SolidityCompiler.js';
 export { DEFAULT_CONFIG } from './config.js';
