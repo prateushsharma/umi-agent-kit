@@ -1,5 +1,5 @@
 {
-  "name": "umiagentkit",
+  "name": "umi-agent-kit",
   "version": "0.1.0",
   "description": "AI-powered agent toolkit for Umi Network blockchain operations",
   "main": "src/index.js",
