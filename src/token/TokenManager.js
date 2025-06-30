@@ -1,16 +1,15 @@
 import { createWalletClient, http, parseUnits, formatUnits, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { AccountAddress, EntryFunction, TransactionPayloadEntryFunction } from '@aptos-labs/ts-sdk';
 import { SolidityCompiler } from '../compiler/SolidityCompiler.js';
 
-export class TokenManager {
+export class UmiTokenManager {
   constructor(client, chain) {
     this.client = client;
     this.chain = chain;
   }
 
   /**
-   * Deploy ERC-20 token contract
+   * Deploy ERC-20 token contract using Umi-specific method
    */
   async deployERC20Token({ 
     deployerPrivateKey, 
@@ -28,11 +27,9 @@ export class TokenManager {
 
       console.log(`🔨 Compiling ${name} token contract...`);
 
-      // Compile the contract with real parameters
+      // Compile the contract
       const compiled = SolidityCompiler.compileERC20Token(name, symbol, decimals, initialSupply);
-      
       console.log(`✅ Contract compiled successfully`);
-      console.log(`📦 Bytecode length: ${compiled.bytecode.length} characters`);
 
       // Format private key
       const formattedKey = deployerPrivateKey.startsWith('0x') 
@@ -49,11 +46,16 @@ export class TokenManager {
 
       console.log(`🚀 Deploying contract from ${account.address}...`);
 
-      // Deploy contract with real compiled bytecode
-      const hash = await walletClient.deployContract({
-        abi: compiled.abi,
-        bytecode: compiled.bytecode,
-        args: [], // No constructor args needed since they're hardcoded
+      // Use Umi-specific deployment method based on docs
+      const serializedBytecode = this._serializeForUmi(compiled.bytecode);
+
+      console.log(`📦 Serialized bytecode for Umi network`);
+
+      // Deploy using Umi-compatible transaction
+      const hash = await walletClient.sendTransaction({
+        to: null, // Contract creation
+        data: serializedBytecode,
+        gas: 2000000n, // Sufficient gas for deployment
       });
 
       console.log(`📝 Transaction hash: ${hash}`);
@@ -82,77 +84,79 @@ export class TokenManager {
   }
 
   /**
-   * Deploy Move token
+   * Serialize bytecode for Umi Network (based on docs)
    */
-  async deployMoveToken({
-    deployerPrivateKey,
-    name,
-    symbol,
-    decimals = 8,
-    monitorSupply = true
-  }) {
+  _serializeForUmi(bytecode) {
     try {
-      // Validate inputs
-      if (!deployerPrivateKey) throw new Error('Deployer private key required');
-      if (!name) throw new Error('Token name required');
-      if (!symbol) throw new Error('Token symbol required');
-
-      // Format private key and get Move address
-      const formattedKey = deployerPrivateKey.startsWith('0x') 
-        ? deployerPrivateKey 
-        : '0x' + deployerPrivateKey;
-
-      const account = privateKeyToAccount(formattedKey);
-      const moveAddress = this._ethToMoveAddress(account.address);
-
-      // Create Move transaction payload
-      const entryFunction = EntryFunction.build(
-        `${moveAddress}::coin`,
-        'initialize_token',
-        ['0x1::aptos_coin::AptosCoin'], // Type argument (placeholder)
-        [
-          new Uint8Array(Buffer.from(name, 'utf8')),
-          new Uint8Array(Buffer.from(symbol, 'utf8')),
-          decimals,
-          monitorSupply
-        ]
-      );
-
-      const payload = new TransactionPayloadEntryFunction(entryFunction);
-      const payloadHex = payload.bcsToHex().toString();
-
-      // Send transaction
-      const walletClient = createWalletClient({
-        account,
-        chain: this.chain,
-        transport: http(this.chain.rpcUrls.default.http[0])
-      });
-
-      const hash = await walletClient.sendTransaction({
-        to: account.address,
-        data: payloadHex,
-      });
-
-      // Wait for confirmation
-      const receipt = await this.client.waitForTransaction(hash);
-
-      return {
-        hash,
-        moduleAddress: moveAddress,
-        deployer: account.address,
-        name,
-        symbol,
-        decimals,
-        type: 'Move'
-      };
-
+      // Based on Umi docs, contracts need to be wrapped in a specific enum
+      // This is similar to what's shown in the Hardhat deployment example
+      
+      // Remove 0x prefix if present
+      const cleanBytecode = bytecode.replace('0x', '');
+      
+      // Convert to bytes array
+      const code = new Uint8Array(Buffer.from(cleanBytecode, 'hex'));
+      
+      // Umi-specific serialization (based on docs pattern)
+      // This creates the proper enum wrapper for contract deployment
+      const serialized = this._createUmiContractWrapper(code);
+      
+      return '0x' + Buffer.from(serialized).toString('hex');
+      
     } catch (error) {
-      throw new Error(`Move token deployment failed: ${error.message}`);
+      throw new Error(`Umi serialization failed: ${error.message}`);
     }
   }
 
   /**
-   * Mint ERC-20 tokens
+   * Create Umi contract wrapper (based on docs example)
+   */
+  _createUmiContractWrapper(contractBytes) {
+    // Based on the docs, Umi uses a specific format for contract deployment
+    // This mimics the BCS serialization shown in the examples
+    
+    const length = contractBytes.length;
+    const lengthBytes = this._encodeLength(length);
+    
+    // Create the wrapper: [enum_variant, length, bytecode]
+    const wrapper = new Uint8Array(1 + lengthBytes.length + contractBytes.length);
+    
+    // Enum variant for EVM contract (based on docs: EvmContract)
+    wrapper[0] = 2; // EvmContract variant
+    
+    // Copy length encoding
+    wrapper.set(lengthBytes, 1);
+    
+    // Copy contract bytecode
+    wrapper.set(contractBytes, 1 + lengthBytes.length);
+    
+    return wrapper;
+  }
+
+  /**
+   * Encode length as varint (simple implementation)
+   */
+  _encodeLength(length) {
+    if (length < 128) {
+      return new Uint8Array([length]);
+    } else if (length < 16384) {
+      return new Uint8Array([
+        (length & 0x7F) | 0x80,
+        length >> 7
+      ]);
+    } else {
+      // For larger lengths, use 4-byte encoding
+      return new Uint8Array([
+        (length & 0xFF),
+        (length >> 8) & 0xFF,
+        (length >> 16) & 0xFF,
+        (length >> 24) & 0xFF
+      ]);
+    }
+  }
+
+  /**
+   * Mint ERC-20 tokens (existing method)
    */
   async mintERC20({
     ownerPrivateKey,
@@ -197,63 +201,6 @@ export class TokenManager {
 
     } catch (error) {
       throw new Error(`ERC-20 mint failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Mint Move tokens
-   */
-  async mintMoveToken({
-    ownerPrivateKey,
-    moduleAddress,
-    to,
-    amount
-  }) {
-    try {
-      const formattedKey = ownerPrivateKey.startsWith('0x') 
-        ? ownerPrivateKey 
-        : '0x' + ownerPrivateKey;
-
-      const account = privateKeyToAccount(formattedKey);
-      const moveAddress = this._ethToMoveAddress(account.address);
-      const toMoveAddress = this._ethToMoveAddress(to);
-
-      // Create mint transaction
-      const entryFunction = EntryFunction.build(
-        `${moduleAddress}::coin`,
-        'mint',
-        ['0x1::aptos_coin::AptosCoin'], // Type argument
-        [
-          AccountAddress.fromString(toMoveAddress),
-          parseInt(amount)
-        ]
-      );
-
-      const payload = new TransactionPayloadEntryFunction(entryFunction);
-      const payloadHex = payload.bcsToHex().toString();
-
-      const walletClient = createWalletClient({
-        account,
-        chain: this.chain,
-        transport: http(this.chain.rpcUrls.default.http[0])
-      });
-
-      const hash = await walletClient.sendTransaction({
-        to: account.address,
-        data: payloadHex,
-      });
-
-      const receipt = await this.client.waitForTransaction(hash);
-
-      return {
-        hash,
-        to,
-        amount: amount.toString(),
-        status: receipt.status === 'success' ? 'confirmed' : 'failed'
-      };
-
-    } catch (error) {
-      throw new Error(`Move token mint failed: ${error.message}`);
     }
   }
 
@@ -328,20 +275,12 @@ export class TokenManager {
 
       if (!result.data) return '0';
 
-      // Decode the result (simple implementation)
+      // Decode the result
       const balance = BigInt(result.data);
       return formatUnits(balance, decimals);
 
     } catch (error) {
       throw new Error(`Failed to get ERC-20 balance: ${error.message}`);
     }
-  }
-
-  /**
-   * Helper: Convert ETH address to Move address
-   */
-  _ethToMoveAddress(ethAddress) {
-    const cleanAddr = ethAddress.replace('0x', '');
-    return '0x000000000000000000000000' + cleanAddr;
   }
 }
