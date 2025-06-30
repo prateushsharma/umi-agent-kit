@@ -17,14 +17,27 @@ export class TransferManager {
       if (!to) throw new Error('Recipient address is required');
       if (!amount) throw new Error('Amount is required');
 
+      // Ensure private key is properly formatted (0x prefix)
+      let formattedPrivateKey = fromPrivateKey;
+      if (!formattedPrivateKey.startsWith('0x')) {
+        formattedPrivateKey = '0x' + formattedPrivateKey;
+      }
+
+      // Validate private key length (should be 66 chars including 0x)
+      if (formattedPrivateKey.length !== 66) {
+        throw new Error('Invalid private key format. Expected 64 hex characters (with or without 0x prefix)');
+      }
+
       // Create account from private key
-      const account = privateKeyToAccount(fromPrivateKey);
+      const account = privateKeyToAccount(formattedPrivateKey);
+      
+      console.log(`Sending from: ${account.address} to: ${to}`);
       
       // Create wallet client for sending transactions
       const walletClient = createWalletClient({
         account,
         chain: this.chain,
-        transport: http(this.client.networkConfig.rpcUrl)
+        transport: http(this.chain.rpcUrls.default.http[0])
       });
 
       // Get current gas price if not provided

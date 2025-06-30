@@ -68,7 +68,8 @@ export class UmiWallet {
    * Export private key (use with caution)
    */
   exportPrivateKey() {
-    return this.privateKey;
+    // Ensure private key has 0x prefix for Viem compatibility
+    return this.privateKey.startsWith('0x') ? this.privateKey : '0x' + this.privateKey;
   }
 }
 
