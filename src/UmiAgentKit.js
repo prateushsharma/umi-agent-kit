@@ -1,6 +1,8 @@
 import { UmiClient } from './client/UmiClient.js';
 import { WalletManager } from './wallet/WalletManager.js';
+import { TransferManager } from './transfer/TransferManager.js';
 import { validateConfig } from './config.js';
+import { parseEther } from 'viem';
 
 export class UmiAgentKit {
   constructor(config = {}) {
@@ -18,6 +20,9 @@ export class UmiAgentKit {
     
     // Initialize wallet manager
     this.walletManager = new WalletManager(this.client);
+
+    // Initialize transfer manager
+    this.transferManager = new TransferManager(this.client, this.client.chain);
 
     console.log(`UmiAgentKit initialized on ${this.config.network}`);
   }
@@ -119,6 +124,72 @@ export class UmiAgentKit {
    */
   validateMnemonic(mnemonic) {
     return WalletManager.validateMnemonic(mnemonic);
+  }
+
+  /**
+   * Send ETH from wallet to another address
+   */
+  async sendETH({ fromWallet, to, amount, gasLimit, gasPrice }) {
+    if (!fromWallet) {
+      throw new Error('From wallet is required');
+    }
+    
+    return await this.transferManager.sendETH({
+      fromPrivateKey: fromWallet.exportPrivateKey(),
+      to,
+      amount,
+      gasLimit,
+      gasPrice
+    });
+  }
+
+  /**
+   * Send ETH using private key directly
+   */
+  async sendETHWithPrivateKey({ fromPrivateKey, to, amount, gasLimit, gasPrice }) {
+    return await this.transferManager.sendETH({
+      fromPrivateKey,
+      to,
+      amount,
+      gasLimit,
+      gasPrice
+    });
+  }
+
+  /**
+   * Check if wallet has enough balance for transfer
+   */
+  async checkBalance({ address, amount, includeGas = true }) {
+    return await this.transferManager.checkBalance({ address, amount, includeGas });
+  }
+
+  /**
+   * Wait for transaction confirmation
+   */
+  async waitForConfirmation(hash, confirmations = 1) {
+    return await this.transferManager.waitForConfirmation(hash, confirmations);
+  }
+
+  /**
+   * Get transaction status
+   */
+  async getTransactionStatus(hash) {
+    return await this.transferManager.getTransactionStatus(hash);
+  }
+
+  /**
+   * Calculate transaction cost
+   */
+  async calculateTransactionCost(amount) {
+    return await this.transferManager.calculateTransactionCost(amount);
+  }
+
+  /**
+   * Estimate gas for transaction
+   */
+  async estimateGas({ from, to, amount }) {
+    const value = parseEther(amount.toString());
+    return await this.transferManager.estimateGas({ from, to, value });
   }
 
   /**
