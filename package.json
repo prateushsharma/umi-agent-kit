@@ -37,7 +37,8 @@
     "ethers": "^6.0.0",
     "groq-sdk": "^0.3.0",
     "umi-agent-kit": "^0.1.0",
-    "viem": "^2.0.0"
+    "viem": "^2.0.0",
+    "solc": "^0.8.0"
   },
   "devDependencies": {
     "eslint": "^8.0.0",

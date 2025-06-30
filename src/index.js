@@ -3,4 +3,5 @@ export { UmiWallet, ethToMoveAddress, moveToEthAddress } from './wallet/UmiWalle
 export { WalletManager } from './wallet/WalletManager.js';
 export { UmiClient } from './client/UmiClient.js';
 export { TransferManager } from './transfer/TransferManager.js';
+export { TokenManager } from './token/TokenManager.js';
 export { DEFAULT_CONFIG } from './config.js';

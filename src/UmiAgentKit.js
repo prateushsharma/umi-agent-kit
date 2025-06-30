@@ -1,6 +1,7 @@
 import { UmiClient } from './client/UmiClient.js';
 import { WalletManager } from './wallet/WalletManager.js';
 import { TransferManager } from './transfer/TransferManager.js';
+import { TokenManager } from './token/TokenManager.js';
 import { validateConfig } from './config.js';
 import { parseEther } from 'viem';
 
@@ -23,6 +24,9 @@ export class UmiAgentKit {
 
     // Initialize transfer manager
     this.transferManager = new TransferManager(this.client, this.client.chain);
+
+    // Initialize token manager
+    this.tokenManager = new TokenManager(this.client, this.client.chain);
 
     console.log(`UmiAgentKit initialized on ${this.config.network}`);
   }
@@ -197,6 +201,189 @@ export class UmiAgentKit {
    */
   async getTotalBalance() {
     return await this.walletManager.getTotalBalance();
+  }
+
+  // ====== TOKEN OPERATIONS ======
+
+  /**
+   * Create ERC-20 token
+   */
+  async createERC20Token({
+    deployerWallet,
+    name,
+    symbol,
+    decimals = 18,
+    initialSupply
+  }) {
+    if (!deployerWallet) {
+      throw new Error('Deployer wallet is required');
+    }
+
+    return await this.tokenManager.deployERC20Token({
+      deployerPrivateKey: deployerWallet.exportPrivateKey(),
+      name,
+      symbol,
+      decimals,
+      initialSupply
+    });
+  }
+
+  /**
+   * Create ERC-20 token with private key
+   */
+  async createERC20TokenWithPrivateKey({
+    deployerPrivateKey,
+    name,
+    symbol,
+    decimals = 18,
+    initialSupply
+  }) {
+    return await this.tokenManager.deployERC20Token({
+      deployerPrivateKey,
+      name,
+      symbol,
+      decimals,
+      initialSupply
+    });
+  }
+
+  /**
+   * Create Move token
+   */
+  async createMoveToken({
+    deployerWallet,
+    name,
+    symbol,
+    decimals = 8,
+    monitorSupply = true
+  }) {
+    if (!deployerWallet) {
+      throw new Error('Deployer wallet is required');
+    }
+
+    return await this.tokenManager.deployMoveToken({
+      deployerPrivateKey: deployerWallet.exportPrivateKey(),
+      name,
+      symbol,
+      decimals,
+      monitorSupply
+    });
+  }
+
+  /**
+   * Create Move token with private key
+   */
+  async createMoveTokenWithPrivateKey({
+    deployerPrivateKey,
+    name,
+    symbol,
+    decimals = 8,
+    monitorSupply = true
+  }) {
+    return await this.tokenManager.deployMoveToken({
+      deployerPrivateKey,
+      name,
+      symbol,
+      decimals,
+      monitorSupply
+    });
+  }
+
+  /**
+   * Mint ERC-20 tokens
+   */
+  async mintERC20Tokens({
+    ownerWallet,
+    tokenAddress,
+    to,
+    amount,
+    decimals = 18
+  }) {
+    if (!ownerWallet) {
+      throw new Error('Owner wallet is required');
+    }
+
+    return await this.tokenManager.mintERC20({
+      ownerPrivateKey: ownerWallet.exportPrivateKey(),
+      tokenAddress,
+      to,
+      amount,
+      decimals
+    });
+  }
+
+  /**
+   * Mint Move tokens
+   */
+  async mintMoveTokens({
+    ownerWallet,
+    moduleAddress,
+    to,
+    amount
+  }) {
+    if (!ownerWallet) {
+      throw new Error('Owner wallet is required');
+    }
+
+    return await this.tokenManager.mintMoveToken({
+      ownerPrivateKey: ownerWallet.exportPrivateKey(),
+      moduleAddress,
+      to,
+      amount
+    });
+  }
+
+  /**
+   * Transfer ERC-20 tokens
+   */
+  async transferERC20Tokens({
+    fromWallet,
+    tokenAddress,
+    to,
+    amount,
+    decimals = 18
+  }) {
+    if (!fromWallet) {
+      throw new Error('From wallet is required');
+    }
+
+    return await this.tokenManager.transferERC20({
+      fromPrivateKey: fromWallet.exportPrivateKey(),
+      tokenAddress,
+      to,
+      amount,
+      decimals
+    });
+  }
+
+  /**
+   * Get ERC-20 token balance
+   */
+  async getERC20Balance({
+    tokenAddress,
+    address,
+    decimals = 18
+  }) {
+    return await this.tokenManager.getERC20Balance({
+      tokenAddress,
+      address,
+      decimals
+    });
+  }
+
+  /**
+   * Get token balance for a wallet
+   */
+  async getTokenBalance({
+    wallet,
+    tokenAddress,
+    decimals = 18
+  }) {
+    return await this.getERC20Balance({
+      tokenAddress,
+      address: wallet.getAddress(),
+      decimals
+    });
   }
 
   /**
