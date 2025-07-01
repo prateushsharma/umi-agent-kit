@@ -1,9 +1,22 @@
+/**
+ * File Location: src/UmiAgentKit.js
+ * COMPLETE UmiAgentKit.js - Full file with NFT support added
+ * 
+ * This is the complete, corrected UmiAgentKit.js file with:
+ * - All existing functionality (wallets, transfers, tokens)
+ * - NEW: Complete NFT functionality
+ * - Proper imports and method structure
+ */
+
 import { UmiClient } from './client/UmiClient.js';
 import { WalletManager } from './wallet/WalletManager.js';
 import { TransferManager } from './transfer/TransferManager.js';
 import { TokenManager } from './token/TokenManager.js';
+import { NFTManager } from './nft/NFTManager.js';
 import { validateConfig } from './config.js';
 import { parseEther } from 'viem';
+import { createWalletClient, http } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 
 export class UmiAgentKit {
   constructor(config = {}) {
@@ -28,8 +41,13 @@ export class UmiAgentKit {
     // Initialize token manager
     this.tokenManager = new TokenManager(this.client, this.client.chain);
 
+    // Initialize NFT manager
+    this.nftManager = new NFTManager(this.client, this.client.chain);
+
     console.log(`UmiAgentKit initialized on ${this.config.network}`);
   }
+
+  // ====== WALLET OPERATIONS ======
 
   /**
    * Create a new wallet
@@ -129,6 +147,8 @@ export class UmiAgentKit {
   validateMnemonic(mnemonic) {
     return WalletManager.validateMnemonic(mnemonic);
   }
+
+  // ====== ETH TRANSFER OPERATIONS ======
 
   /**
    * Send ETH from wallet to another address
@@ -386,6 +406,405 @@ export class UmiAgentKit {
     });
   }
 
+  // ====== NFT OPERATIONS ======
+
+  /**
+   * Create NFT collection
+   */
+  async createNFTCollection({
+    deployerWallet,
+    name,
+    symbol,
+    baseURI = "",
+    maxSupply = 10000,
+    mintPrice = "0"
+  }) {
+    if (!deployerWallet) {
+      throw new Error('Deployer wallet is required');
+    }
+
+    return await this.nftManager.deployNFTCollection({
+      deployerPrivateKey: deployerWallet.exportPrivateKey(),
+      name,
+      symbol,
+      baseURI,
+      maxSupply,
+      mintPrice
+    });
+  }
+
+  /**
+   * Create NFT collection with private key
+   */
+  async createNFTCollectionWithPrivateKey({
+    deployerPrivateKey,
+    name,
+    symbol,
+    baseURI = "",
+    maxSupply = 10000,
+    mintPrice = "0"
+  }) {
+    return await this.nftManager.deployNFTCollection({
+      deployerPrivateKey,
+      name,
+      symbol,
+      baseURI,
+      maxSupply,
+      mintPrice
+    });
+  }
+
+  /**
+   * Mint NFT to specific address
+   */
+  async mintNFT({
+    ownerWallet,
+    contractAddress,
+    to,
+    tokenId,
+    metadataURI = ""
+  }) {
+    if (!ownerWallet) {
+      throw new Error('Owner wallet is required');
+    }
+
+    return await this.nftManager.mintNFT({
+      ownerPrivateKey: ownerWallet.exportPrivateKey(),
+      contractAddress,
+      to,
+      tokenId,
+      metadataURI
+    });
+  }
+
+  /**
+   * Mint NFT with private key
+   */
+  async mintNFTWithPrivateKey({
+    ownerPrivateKey,
+    contractAddress,
+    to,
+    tokenId,
+    metadataURI = ""
+  }) {
+    return await this.nftManager.mintNFT({
+      ownerPrivateKey,
+      contractAddress,
+      to,
+      tokenId,
+      metadataURI
+    });
+  }
+
+  /**
+   * Batch mint NFTs
+   */
+  async batchMintNFTs({
+    ownerWallet,
+    contractAddress,
+    recipients
+  }) {
+    if (!ownerWallet) {
+      throw new Error('Owner wallet is required');
+    }
+
+    return await this.nftManager.batchMintNFTs({
+      ownerPrivateKey: ownerWallet.exportPrivateKey(),
+      contractAddress,
+      recipients
+    });
+  }
+
+  /**
+   * Batch mint NFTs with private key
+   */
+  async batchMintNFTsWithPrivateKey({
+    ownerPrivateKey,
+    contractAddress,
+    recipients
+  }) {
+    return await this.nftManager.batchMintNFTs({
+      ownerPrivateKey,
+      contractAddress,
+      recipients
+    });
+  }
+
+  /**
+   * Transfer NFT between addresses
+   */
+  async transferNFT({
+    fromWallet,
+    contractAddress,
+    from,
+    to,
+    tokenId
+  }) {
+    if (!fromWallet) {
+      throw new Error('From wallet is required');
+    }
+
+    return await this.nftManager.transferNFT({
+      fromPrivateKey: fromWallet.exportPrivateKey(),
+      contractAddress,
+      from,
+      to,
+      tokenId
+    });
+  }
+
+  /**
+   * Transfer NFT with private key
+   */
+  async transferNFTWithPrivateKey({
+    fromPrivateKey,
+    contractAddress,
+    from,
+    to,
+    tokenId
+  }) {
+    return await this.nftManager.transferNFT({
+      fromPrivateKey,
+      contractAddress,
+      from,
+      to,
+      tokenId
+    });
+  }
+
+  /**
+   * Get NFT owner
+   */
+  async getNFTOwner({
+    contractAddress,
+    tokenId
+  }) {
+    return await this.nftManager.getNFTOwner({
+      contractAddress,
+      tokenId
+    });
+  }
+
+  /**
+   * Get NFT metadata
+   */
+  async getNFTMetadata({
+    contractAddress,
+    tokenId
+  }) {
+    return await this.nftManager.getNFTMetadata({
+      contractAddress,
+      tokenId
+    });
+  }
+
+  /**
+   * Get NFT balance for address
+   */
+  async getNFTBalance({
+    contractAddress,
+    address
+  }) {
+    return await this.nftManager.getNFTBalance({
+      contractAddress,
+      address
+    });
+  }
+
+  /**
+   * Get NFT balance for wallet
+   */
+  async getWalletNFTBalance({
+    wallet,
+    contractAddress
+  }) {
+    return await this.getNFTBalance({
+      contractAddress,
+      address: wallet.getAddress()
+    });
+  }
+
+  /**
+   * Get collection information
+   */
+  async getCollectionInfo({
+    contractAddress
+  }) {
+    return await this.nftManager.getCollectionInfo({
+      contractAddress
+    });
+  }
+
+  /**
+   * Set approval for all NFTs (useful for marketplaces)
+   */
+  async setNFTApprovalForAll({
+    ownerWallet,
+    contractAddress,
+    operator,
+    approved = true
+  }) {
+    if (!ownerWallet) {
+      throw new Error('Owner wallet is required');
+    }
+
+    return await this.nftManager.setApprovalForAll({
+      ownerPrivateKey: ownerWallet.exportPrivateKey(),
+      contractAddress,
+      operator,
+      approved
+    });
+  }
+
+  /**
+   * Set approval for all NFTs with private key
+   */
+  async setNFTApprovalForAllWithPrivateKey({
+    ownerPrivateKey,
+    contractAddress,
+    operator,
+    approved = true
+  }) {
+    return await this.nftManager.setApprovalForAll({
+      ownerPrivateKey,
+      contractAddress,
+      operator,
+      approved
+    });
+  }
+
+  // ====== GAMING NFT HELPERS ======
+
+  /**
+   * Create gaming NFT collection with special features
+   */
+  async createGamingNFTCollection({
+    deployerWallet,
+    name,
+    symbol,
+    baseURI = "",
+    categories = ['common', 'rare', 'epic', 'legendary']
+  }) {
+    if (!deployerWallet) {
+      throw new Error('Deployer wallet is required');
+    }
+
+    // Use NFTCompiler for gaming-specific contract
+    const { NFTCompiler } = await import('./compiler/NFTCompiler.js');
+    
+    const gamingContract = NFTCompiler.compileGamingNFT(name, symbol, baseURI, categories);
+    
+    // Deploy using custom bytecode
+    const formattedKey = deployerWallet.exportPrivateKey().startsWith('0x') 
+      ? deployerWallet.exportPrivateKey() 
+      : '0x' + deployerWallet.exportPrivateKey();
+
+    const account = privateKeyToAccount(formattedKey);
+    
+    const walletClient = createWalletClient({
+      account,
+      chain: this.client.chain,
+      transport: http(this.client.chain.rpcUrls.default.http[0])
+    });
+
+    // Use same serialization as other contracts
+    const serializedBytecode = this.nftManager._serializeForUmi(gamingContract.bytecode);
+
+    const hash = await walletClient.sendTransaction({
+      to: null,
+      data: serializedBytecode,
+      gas: 3500000n, // Higher gas for gaming contracts
+    });
+
+    const receipt = await this.client.waitForTransaction(hash);
+    
+    return {
+      hash,
+      contractAddress: receipt.contractAddress,
+      deployer: account.address,
+      name,
+      symbol,
+      baseURI,
+      categories,
+      type: 'GamingNFT',
+      abi: gamingContract.abi,
+      bytecode: gamingContract.bytecode
+    };
+  }
+
+  /**
+   * Quick mint hero NFT (gaming helper)
+   */
+  async mintHeroNFT({
+    ownerWallet,
+    contractAddress,
+    heroName,
+    heroClass,
+    level = 1,
+    imageURL
+  }) {
+    const tokenId = Date.now(); // Simple ID generation
+    const metadata = {
+      name: heroName,
+      description: `A level ${level} ${heroClass} hero`,
+      image: imageURL,
+      attributes: [
+        { trait_type: "Class", value: heroClass },
+        { trait_type: "Level", value: level },
+        { trait_type: "Type", value: "Hero" }
+      ]
+    };
+    
+    // For production, you'd upload this to IPFS
+    const metadataURI = `data:application/json;base64,${Buffer.from(JSON.stringify(metadata)).toString('base64')}`;
+    
+    return await this.mintNFT({
+      ownerWallet,
+      contractAddress,
+      to: ownerWallet.getAddress(),
+      tokenId,
+      metadataURI
+    });
+  }
+
+  /**
+   * Quick mint weapon NFT (gaming helper)
+   */
+  async mintWeaponNFT({
+    ownerWallet,
+    contractAddress,
+    weaponName,
+    weaponType,
+    damage,
+    rarity,
+    imageURL
+  }) {
+    const tokenId = Date.now() + Math.floor(Math.random() * 1000); // Avoid collisions
+    const metadata = {
+      name: weaponName,
+      description: `A ${rarity} ${weaponType} with ${damage} damage`,
+      image: imageURL,
+      attributes: [
+        { trait_type: "Type", value: weaponType },
+        { trait_type: "Damage", value: damage },
+        { trait_type: "Rarity", value: rarity },
+        { trait_type: "Category", value: "Weapon" }
+      ]
+    };
+    
+    const metadataURI = `data:application/json;base64,${Buffer.from(JSON.stringify(metadata)).toString('base64')}`;
+    
+    return await this.mintNFT({
+      ownerWallet,
+      contractAddress,
+      to: ownerWallet.getAddress(),
+      tokenId,
+      metadataURI
+    });
+  }
+
+  // ====== UTILITY METHODS ======
+
   /**
    * Get summary of the kit
    */
@@ -400,7 +819,17 @@ export class UmiAgentKit {
       rpcUrl: networkInfo.rpcUrl,
       walletCount,
       totalBalance: `${totalBalance} ETH`,
-      wallets: this.walletManager.getWalletAddresses()
+      wallets: this.walletManager.getWalletAddresses(),
+      features: {
+        walletManagement: true,
+        ethTransfers: true,
+        erc20Tokens: true,
+        moveTokens: true,
+        nftCollections: true,
+        nftMinting: true,
+        gamingNFTs: true
+      },
+      version: '0.5.0'
     };
   }
 
