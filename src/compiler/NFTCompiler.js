@@ -1,13 +1,3 @@
-/**
- * File Location: src/compiler/NFTCompiler.js
- * NFT Compiler - Compiles ERC-721 NFT contracts for Umi Network
- * 
- * Features:
- * - Generate ERC-721 contract source code
- * - Compile to bytecode using solc
- * - Support for metadata, batch minting, and marketplace integration
- * - Optimized for gaming and collectibles use cases
- */
 
 import solc from 'solc';
 
