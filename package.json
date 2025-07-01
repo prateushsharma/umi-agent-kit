@@ -1,6 +1,6 @@
 {
   "name": "umi-agent-kit",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "AI-powered agent toolkit for Umi Network blockchain operations",
   "main": "src/index.js",
   "type": "module",
