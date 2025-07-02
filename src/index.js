@@ -1,4 +1,3 @@
-
 export { UmiAgentKit } from './UmiAgentKit.js';
 export { UmiWallet, ethToMoveAddress, moveToEthAddress } from './wallet/UmiWallet.js';
 export { WalletManager } from './wallet/WalletManager.js';
@@ -8,5 +7,19 @@ export { TokenManager } from './token/TokenManager.js';
 export { NFTManager } from './nft/NFTManager.js';
 export { SolidityCompiler } from './compiler/SolidityCompiler.js';
 export { NFTCompiler } from './compiler/NFTCompiler.js';
-export { MoveNFTCompiler } from './compiler/MoveNFTCompiler.js';  // NEW
+export { MoveNFTCompiler } from './compiler/MoveNFTCompiler.js';
 export { DEFAULT_CONFIG } from './config.js';
+
+// NEW: AI exports
+export { AIManager } from './ai/AIManager.js';
+export { GroqEngine } from './ai/GroqEngine.js';
+export { UmiAIWrapper } from './ai/UmiAIWrapper.js';
+export { FunctionRegistry } from './ai/FunctionRegistry.js';
+export { ContextManager } from './ai/ContextManager.js';
+
+// Multisig exports
+export { ServerMultisigManager } from './multisig/ServerMultisigManager.js';
+export { ProposalEngine } from './multisig/ProposalEngine.js';
+export { PermissionSystem } from './multisig/PermissionSystem.js';
+export { NotificationService } from './multisig/NotificationService.js';
+export { MultisigStorage } from './multisig/MultisigStorage.js';

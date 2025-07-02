@@ -1,13 +1,14 @@
 /**
  * File Location: src/UmiAgentKit.js
- * COMPLETE UmiAgentKit.js - Final version with FULL functionality + Multisig
+ * COMPLETE UmiAgentKit.js - Final version with FULL functionality + Multisig + AI
  * 
  * This is the complete UmiAgentKit.js file with:
  * - ALL existing functionality (wallets, transfers, tokens, ERC-721 NFTs, Move NFTs)
  * - ALL gaming features (heroes, weapons, dual-VM, cross-chain)
- * - NEW: Complete multisig functionality
- * - NEW: Gaming studio and guild treasury management
- * - NEW: Proposal and approval workflows
+ * - Complete multisig functionality
+ * - Gaming studio and guild treasury management
+ * - Proposal and approval workflows
+ * - NEW: AI Integration with Groq
  */
 
 import { UmiClient } from './client/UmiClient.js';
@@ -15,7 +16,8 @@ import { WalletManager } from './wallet/WalletManager.js';
 import { TransferManager } from './transfer/TransferManager.js';
 import { TokenManager } from './token/TokenManager.js';
 import { NFTManager } from './nft/NFTManager.js';
-import { ServerMultisigManager } from './multisig/ServerMultisigManager.js'; // NEW!
+import { ServerMultisigManager } from './multisig/ServerMultisigManager.js';
+import { AIManager } from './ai/AIManager.js'; // NEW: AI Integration
 import { validateConfig } from './config.js';
 import { parseEther } from 'viem';
 import { createWalletClient, http } from 'viem';
@@ -26,7 +28,8 @@ export class UmiAgentKit {
     // Set default config
     this.config = {
       network: 'devnet',
-      multisigEnabled: true, // NEW: Enable multisig by default
+      multisigEnabled: true,
+      aiEnabled: false, // NEW: AI is optional by default
       ...config
     };
 
@@ -48,13 +51,138 @@ export class UmiAgentKit {
     // Initialize NFT manager (supports both ERC-721 and Move)
     this.nftManager = new NFTManager(this.client, this.client.chain);
 
-    // NEW: Initialize multisig manager with server wallets
+    // Initialize multisig manager with server wallets
     if (this.config.multisigEnabled) {
       this.multisigManager = new ServerMultisigManager(this.client);
       console.log(`🔐 Multisig functionality enabled`);
     }
 
+    // AI Manager will be initialized when enableAI() is called
+    this.aiManager = null;
+
     console.log(`UmiAgentKit initialized on ${this.config.network}`);
+  }
+
+  // ====== NEW: AI INTEGRATION METHODS ======
+
+  /**
+   * Enable AI functionality with Groq integration
+   */
+  enableAI(aiConfig = {}) {
+    try {
+      // Validate AI configuration
+      if (!aiConfig.groqApiKey && !aiConfig.apiKey) {
+        throw new Error('Groq API key is required. Get one from https://console.groq.com/');
+      }
+
+      // Initialize AI Manager
+      this.aiManager = new AIManager(this, {
+        groqApiKey: aiConfig.groqApiKey || aiConfig.apiKey,
+        ...aiConfig
+      });
+
+      // Mark AI as enabled
+      this.config.aiEnabled = true;
+
+      console.log('🤖 AI functionality enabled with Groq');
+      
+      return this.aiManager;
+
+    } catch (error) {
+      throw new Error(`Failed to enable AI: ${error.message}`);
+    }
+  }
+
+  /**
+   * Check if AI is enabled
+   */
+  isAIEnabled() {
+    return this.config.aiEnabled && this.aiManager !== null;
+  }
+
+  /**
+   * Chat with AI (requires AI to be enabled first)
+   */
+  async chat(message) {
+    if (!this.isAIEnabled()) {
+      throw new Error('AI not enabled. Call enableAI() first with your Groq API key.');
+    }
+
+    return await this.aiManager.chat(message);
+  }
+
+  /**
+   * Configure AI settings
+   */
+  configureAI(preset = null, customConfig = {}) {
+    if (!this.isAIEnabled()) {
+      throw new Error('AI not enabled. Call enableAI() first.');
+    }
+
+    return this.aiManager.configureGroq(preset, customConfig);
+  }
+
+  /**
+   * Get AI configuration and available options
+   */
+  getAIConfig() {
+    if (!this.isAIEnabled()) {
+      return {
+        enabled: false,
+        message: 'AI not enabled. Call enableAI() to get started.'
+      };
+    }
+
+    return this.aiManager.getGroqConfig();
+  }
+
+  /**
+   * Set AI context (useful for setting default wallet, etc.)
+   */
+  setAIContext(key, value) {
+    if (!this.isAIEnabled()) {
+      throw new Error('AI not enabled. Call enableAI() first.');
+    }
+
+    this.aiManager.setContext(key, value);
+  }
+
+  /**
+   * Clear AI conversation history
+   */
+  clearAIHistory() {
+    if (!this.isAIEnabled()) {
+      throw new Error('AI not enabled. Call enableAI() first.');
+    }
+
+    this.aiManager.clearHistory();
+  }
+
+  /**
+   * Setup AI for different scenarios
+   */
+  setupAIForGaming() {
+    if (!this.isAIEnabled()) {
+      throw new Error('AI not enabled. Call enableAI() first.');
+    }
+
+    this.aiManager.setupForGaming();
+  }
+
+  setupAIForProduction() {
+    if (!this.isAIEnabled()) {
+      throw new Error('AI not enabled. Call enableAI() first.');
+    }
+
+    this.aiManager.setupForProduction();
+  }
+
+  setupAIForQuickOps() {
+    if (!this.isAIEnabled()) {
+      throw new Error('AI not enabled. Call enableAI() first.');
+    }
+
+    this.aiManager.setupForQuickOps();
   }
 
   // ====== WALLET OPERATIONS ======
@@ -63,21 +191,42 @@ export class UmiAgentKit {
    * Create a new wallet
    */
   createWallet() {
-    return this.walletManager.createWallet();
+    const wallet = this.walletManager.createWallet();
+    
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateWalletContext(this.getAllWallets());
+    }
+    
+    return wallet;
   }
 
   /**
    * Import wallet from private key
    */
   importWallet(privateKey) {
-    return this.walletManager.importWallet(privateKey);
+    const wallet = this.walletManager.importWallet(privateKey);
+    
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateWalletContext(this.getAllWallets());
+    }
+    
+    return wallet;
   }
 
   /**
    * Import wallet from mnemonic
    */
   importFromMnemonic(mnemonic, index = 0) {
-    return this.walletManager.importFromMnemonic(mnemonic, index);
+    const wallet = this.walletManager.importFromMnemonic(mnemonic, index);
+    
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateWalletContext(this.getAllWallets());
+    }
+    
+    return wallet;
   }
 
   /**
@@ -249,13 +398,24 @@ export class UmiAgentKit {
       throw new Error('Deployer wallet is required');
     }
 
-    return await this.tokenManager.deployERC20Token({
+    const result = await this.tokenManager.deployERC20Token({
       deployerPrivateKey: deployerWallet.exportPrivateKey(),
       name,
       symbol,
       decimals,
       initialSupply
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('token', result.contractAddress, {
+        name,
+        symbol,
+        type: 'ERC20'
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -268,13 +428,24 @@ export class UmiAgentKit {
     decimals = 18,
     initialSupply
   }) {
-    return await this.tokenManager.deployERC20Token({
+    const result = await this.tokenManager.deployERC20Token({
       deployerPrivateKey,
       name,
       symbol,
       decimals,
       initialSupply
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('token', result.contractAddress, {
+        name,
+        symbol,
+        type: 'ERC20'
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -291,13 +462,24 @@ export class UmiAgentKit {
       throw new Error('Deployer wallet is required');
     }
 
-    return await this.tokenManager.deployMoveToken({
+    const result = await this.tokenManager.deployMoveToken({
       deployerPrivateKey: deployerWallet.exportPrivateKey(),
       name,
       symbol,
       decimals,
       monitorSupply
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('token', result.moduleAddress, {
+        name,
+        symbol,
+        type: 'Move'
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -310,13 +492,24 @@ export class UmiAgentKit {
     decimals = 8,
     monitorSupply = true
   }) {
-    return await this.tokenManager.deployMoveToken({
+    const result = await this.tokenManager.deployMoveToken({
       deployerPrivateKey,
       name,
       symbol,
       decimals,
       monitorSupply
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('token', result.moduleAddress, {
+        name,
+        symbol,
+        type: 'Move'
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -433,7 +626,7 @@ export class UmiAgentKit {
       throw new Error('Deployer wallet is required');
     }
 
-    return await this.nftManager.deployNFTCollection({
+    const result = await this.nftManager.deployNFTCollection({
       deployerPrivateKey: deployerWallet.exportPrivateKey(),
       name,
       symbol,
@@ -441,6 +634,17 @@ export class UmiAgentKit {
       maxSupply,
       mintPrice
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('nft', result.contractAddress, {
+        name,
+        symbol,
+        type: 'ERC721'
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -454,7 +658,7 @@ export class UmiAgentKit {
     maxSupply = 10000,
     mintPrice = "0"
   }) {
-    return await this.nftManager.deployNFTCollection({
+    const result = await this.nftManager.deployNFTCollection({
       deployerPrivateKey,
       name,
       symbol,
@@ -462,6 +666,17 @@ export class UmiAgentKit {
       maxSupply,
       mintPrice
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('nft', result.contractAddress, {
+        name,
+        symbol,
+        type: 'ERC721'
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -614,13 +829,24 @@ export class UmiAgentKit {
       throw new Error('Deployer wallet is required');
     }
 
-    return await this.nftManager.deployMoveNFTCollection({
+    const result = await this.nftManager.deployMoveNFTCollection({
       deployerPrivateKey: deployerWallet.exportPrivateKey(),
       name,
       symbol,
       description,
       maxSupply
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('nft', result.moduleAddress, {
+        name,
+        symbol,
+        type: 'MoveNFT'
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -633,13 +859,24 @@ export class UmiAgentKit {
     description = "",
     maxSupply = 10000
   }) {
-    return await this.nftManager.deployMoveNFTCollection({
+    const result = await this.nftManager.deployMoveNFTCollection({
       deployerPrivateKey,
       name,
       symbol,
       description,
       maxSupply
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('nft', result.moduleAddress, {
+        name,
+        symbol,
+        type: 'MoveNFT'
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -793,12 +1030,23 @@ export class UmiAgentKit {
       throw new Error('Deployer wallet is required');
     }
 
-    return await this.nftManager.deployGamingMoveNFTCollection({
+    const result = await this.nftManager.deployGamingMoveNFTCollection({
       deployerPrivateKey: deployerWallet.exportPrivateKey(),
       name,
       symbol,
       categories
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('nft', result.moduleAddress, {
+        name,
+        symbol,
+        type: 'GamingMoveNFT'
+      });
+    }
+
+    return result;
   }
 
   // ====== GAMING NFT HELPERS ======
@@ -846,7 +1094,7 @@ export class UmiAgentKit {
 
     const receipt = await this.client.waitForTransaction(hash);
     
-    return {
+    const result = {
       hash,
       contractAddress: receipt.contractAddress,
       deployer: account.address,
@@ -858,6 +1106,17 @@ export class UmiAgentKit {
       abi: gamingContract.abi,
       bytecode: gamingContract.bytecode
     };
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('nft', result.contractAddress, {
+        name,
+        symbol,
+        type: 'GamingNFT'
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -1113,7 +1372,7 @@ export class UmiAgentKit {
     };
   }
 
-  // ====== NEW: MULTISIG OPERATIONS ======
+  // ====== MULTISIG OPERATIONS ======
 
   /**
    * Register wallets for multisig use
@@ -1163,7 +1422,7 @@ export class UmiAgentKit {
       throw new Error('Multisig not enabled');
     }
 
-    return await this.multisigManager.createMultisigGroup({
+    const result = await this.multisigManager.createMultisigGroup({
       name,
       description,
       members,
@@ -1171,6 +1430,13 @@ export class UmiAgentKit {
       rules,
       notifications
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateMultisigContext(result);
+    }
+
+    return result;
   }
 
   /**
@@ -1185,11 +1451,21 @@ export class UmiAgentKit {
       throw new Error('Multisig not enabled');
     }
 
-    return await this.multisigManager.createGamingStudioMultisig({
+    const result = await this.multisigManager.createGamingStudioMultisig({
       studioName,
       teamWallets,
       studioRules
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.setGamingStudioContext({ 
+        studioName, 
+        studioMultisig: result 
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -1205,12 +1481,19 @@ export class UmiAgentKit {
       throw new Error('Multisig not enabled');
     }
 
-    return await this.multisigManager.createGuildMultisig({
+    const result = await this.multisigManager.createGuildMultisig({
       guildName,
       officers,
       members,
       guildRules
     });
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateMultisigContext(result);
+    }
+
+    return result;
   }
 
   /**
@@ -1471,18 +1754,25 @@ export class UmiAgentKit {
     console.log(`🔐 Multisig ID: ${studioMultisig.id}`);
     console.log(`📝 Created ${proposals.length} initial proposals`);
 
-    return {
+    const result = {
       studioMultisig,
       teamWallets,
       proposals,
       studioName
     };
+
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.setGamingStudioContext(result);
+    }
+
+    return result;
   }
 
   // ====== UTILITY METHODS ======
 
   /**
-   * Get enhanced summary including multisig information
+   * Get enhanced summary including multisig and AI information
    */
   async getSummary() {
     const networkInfo = this.getNetworkInfo();
@@ -1505,7 +1795,8 @@ export class UmiAgentKit {
         moveNFTs: true,          // Move NFTs
         gamingNFTs: true,        // Both ERC-721 and Move gaming features
         dualVMNFTs: true,        // Dual-VM NFT support
-        serverMultisig: this.config.multisigEnabled // NEW!
+        serverMultisig: this.config.multisigEnabled, // Multisig
+        aiIntegration: this.config.aiEnabled // NEW: AI
       },
       capabilities: {
         createCollections: ['ERC-721', 'Move'],
@@ -1513,12 +1804,16 @@ export class UmiAgentKit {
         transferNFTs: ['ERC-721', 'Move'],
         upgradeNFTs: ['Move gaming features'],
         dualChain: true,
-        multisigOperations: this.config.multisigEnabled ? [ // NEW!
+        multisigOperations: this.config.multisigEnabled ? [
           'gaming studios', 'guild treasuries', 'proposal workflows', 
           'role-based permissions', 'batch operations'
+        ] : [],
+        aiFeatures: this.config.aiEnabled ? [ // NEW: AI capabilities
+          'natural language queries', 'balance checking', 'wallet management',
+          'transaction assistance', 'context awareness', 'conversation memory'
         ] : []
       },
-      version: '0.7.0' // Updated for multisig support
+      version: '1.0.0' // Updated for AI support
     };
 
     // Add multisig summary if enabled
@@ -1542,6 +1837,24 @@ export class UmiAgentKit {
       };
     }
 
+    // Add AI summary if enabled
+    if (this.config.aiEnabled && this.aiManager) {
+      const aiConfig = this.aiManager.getGroqConfig();
+      summary.ai = {
+        enabled: true,
+        model: aiConfig.current.model,
+        temperature: aiConfig.current.temperature,
+        conversationLength: this.aiManager.getConversationHistory().length,
+        availableModels: Object.keys(aiConfig.availableModels),
+        presets: Object.keys(aiConfig.presets)
+      };
+    } else {
+      summary.ai = {
+        enabled: false,
+        message: 'Enable with enableAI({ groqApiKey: "your-key" })'
+      };
+    }
+
     return summary;
   }
 
@@ -1551,8 +1864,10 @@ export class UmiAgentKit {
   close() {
     this.walletManager.clearWallets();
     if (this.multisigManager) {
-      // Cleanup multisig if needed
       console.log('🔐 Multisig manager cleaned up');
+    }
+    if (this.aiManager) {
+      console.log('🤖 AI manager cleaned up');
     }
     console.log('UmiAgentKit closed');
   }
