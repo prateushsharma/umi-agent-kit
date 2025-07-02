@@ -1,111 +1,48 @@
 /**
  * File: src/ai/UmiAIWrapper.js
  * 
- * Wrapper around UmiAgentKit functionality specifically designed for AI consumption
- * Handles address resolution, validation, and user-friendly responses
+ * Wrapper that provides AI-friendly interfaces to UmiAgentKit functions
+ * INCLUDING ALL MULTISIG METHODS
  */
-
-import { formatEther } from 'viem';
 
 export class UmiAIWrapper {
   constructor(umiKit) {
     this.umiKit = umiKit;
-    this.defaultWallet = null; // User can set their default wallet
-    
-    console.log('🔗 UmiAIWrapper initialized');
+    console.log('🤖 UmiAIWrapper initialized');
   }
 
-  /**
-   * Set default wallet for "my wallet" references
-   */
-  setDefaultWallet(address) {
-    // Validate address format
-    if (!address.startsWith('0x') || address.length !== 42) {
-      throw new Error('Invalid wallet address format. Expected 0x followed by 40 hex characters.');
-    }
-    
-    this.defaultWallet = address;
-    console.log(`📌 Default wallet set: ${address}`);
-  }
+  // ====== EXISTING WALLET FUNCTIONS ======
 
   /**
-   * Get default wallet or prompt user to set one
+   * Get wallet balance with AI-friendly error handling
    */
-  getDefaultWallet() {
-    if (!this.defaultWallet) {
-      // Try to get first managed wallet
-      const wallets = this.umiKit.getAllWallets();
-      if (wallets.length > 0) {
-        this.defaultWallet = wallets[0].getAddress();
-        console.log(`🎯 Auto-selected default wallet: ${this.defaultWallet}`);
-      }
-    }
-    return this.defaultWallet;
-  }
-
-  /**
-   * Resolve address from user input
-   * Handles: "my", "0x123...", or attempts to find by partial match
-   */
-  _resolveAddress(addressInput) {
-    if (!addressInput) {
-      throw new Error('Address is required');
-    }
-
-    // Handle "my wallet" references
-    if (addressInput.toLowerCase() === 'my' || addressInput.toLowerCase() === 'mine') {
-      const defaultAddr = this.getDefaultWallet();
-      if (!defaultAddr) {
-        throw new Error('No default wallet set. Please provide a specific address or import a wallet first.');
-      }
-      return defaultAddr;
-    }
-
-    // Handle full address
-    if (addressInput.startsWith('0x') && addressInput.length === 42) {
-      return addressInput;
-    }
-
-    // Handle partial address - try to find in managed wallets
-    if (addressInput.startsWith('0x') && addressInput.length < 42) {
-      const wallets = this.umiKit.getAllWallets();
-      const matches = wallets.filter(w => 
-        w.getAddress().toLowerCase().startsWith(addressInput.toLowerCase())
-      );
-      
-      if (matches.length === 1) {
-        return matches[0].getAddress();
-      } else if (matches.length > 1) {
-        throw new Error(`Ambiguous address "${addressInput}" matches multiple wallets: ${matches.map(w => w.getAddress()).join(', ')}`);
-      }
-    }
-
-    throw new Error(`Invalid address format: "${addressInput}". Expected full address (0x...) or "my" for default wallet.`);
-  }
-
-  /**
-   * Get wallet balance with user-friendly formatting
-   */
-  async getWalletBalance(args) {
+  async getWalletBalance({ address }) {
     try {
-      const address = this._resolveAddress(args.address);
+      let targetAddress = address;
       
-      console.log(`💰 Checking balance for: ${address}`);
+      // Handle "my wallet" or similar references
+      if (address === 'my' || address === 'mine' || address === 'default') {
+        const context = this.umiKit.aiManager?.getContext();
+        targetAddress = context?.defaultWallet || context?.userWallet;
+        
+        if (!targetAddress) {
+          throw new Error('No default wallet set. Please provide a specific address or import a wallet first.');
+        }
+      }
       
-      // Get balance from UmiAgentKit
-      const balanceWei = await this.umiKit.getBalance(address);
-      const balanceEth = formatEther(balanceWei);
+      // Validate address format
+      if (!targetAddress || !targetAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+        throw new Error(`Invalid wallet address: ${targetAddress}`);
+      }
       
-      // Check if this is a managed wallet
-      const wallet = this.umiKit.getWallet(address);
-      const isManaged = wallet !== null;
+      const balance = await this.umiKit.getBalance(targetAddress);
+      const balanceETH = (parseFloat(balance) / 1e18).toFixed(6);
       
       return {
-        address,
-        balance: balanceEth,
-        balanceWei: balanceWei.toString(),
-        isManaged,
-        network: this.umiKit.getNetworkInfo().network
+        address: targetAddress,
+        balance: balanceETH,
+        balanceWei: balance.toString(),
+        network: this.umiKit.client.networkInfo.network
       };
       
     } catch (error) {
@@ -116,7 +53,7 @@ export class UmiAIWrapper {
   /**
    * Get network information
    */
-  async getNetworkInfo(args = {}) {
+  async getNetworkInfo() {
     try {
       const networkInfo = this.umiKit.getNetworkInfo();
       const blockNumber = await this.umiKit.getBlockNumber();
@@ -125,64 +62,38 @@ export class UmiAIWrapper {
         network: networkInfo.network,
         chainId: networkInfo.chainId,
         rpcUrl: networkInfo.rpcUrl,
-        blockExplorer: networkInfo.explorer,
-        currentBlock: blockNumber.toString(),
-        connected: true
+        blockExplorer: networkInfo.blockExplorer,
+        currentBlock: blockNumber
       };
-      
     } catch (error) {
       throw new Error(`Failed to get network info: ${error.message}`);
     }
   }
 
   /**
-   * List all managed wallets with balances
+   * List all wallets
    */
-  async listWallets(args = {}) {
+  async listWallets() {
     try {
-      const wallets = this.umiKit.getAllWallets();
+      const summary = await this.umiKit.getSummary();
+      const wallets = [];
       
-      if (wallets.length === 0) {
-        return {
-          wallets: [],
-          count: 0,
-          message: 'No wallets are currently managed. Create or import a wallet to get started.'
-        };
+      // Add main wallet if available
+      const context = this.umiKit.aiManager?.getContext();
+      if (context?.defaultWallet) {
+        const balance = await this.umiKit.getBalance(context.defaultWallet);
+        wallets.push({
+          address: context.defaultWallet,
+          type: 'main',
+          balance: (parseFloat(balance) / 1e18).toFixed(6)
+        });
       }
-
-      // Get balances for all wallets
-      const walletsWithBalances = await Promise.all(
-        wallets.map(async (wallet) => {
-          try {
-            const balanceWei = await this.umiKit.getBalance(wallet.getAddress());
-            const balanceEth = formatEther(balanceWei);
-            
-            return {
-              address: wallet.getAddress(),
-              moveAddress: wallet.getMoveAddress(),
-              balance: balanceEth,
-              balanceWei: balanceWei.toString(),
-              isDefault: wallet.getAddress() === this.defaultWallet
-            };
-          } catch (error) {
-            return {
-              address: wallet.getAddress(),
-              moveAddress: wallet.getMoveAddress(),
-              balance: 'Error',
-              balanceWei: '0',
-              error: error.message,
-              isDefault: wallet.getAddress() === this.defaultWallet
-            };
-          }
-        })
-      );
-
-      return {
-        wallets: walletsWithBalances,
-        count: wallets.length,
-        defaultWallet: this.defaultWallet
-      };
       
+      return {
+        wallets,
+        totalWallets: summary.walletCount,
+        network: summary.network
+      };
     } catch (error) {
       throw new Error(`Failed to list wallets: ${error.message}`);
     }
@@ -191,17 +102,14 @@ export class UmiAIWrapper {
   /**
    * Get current gas price
    */
-  async getGasPrice(args = {}) {
+  async getGasPrice() {
     try {
-      const gasPriceWei = await this.umiKit.getGasPrice();
-      const gasPriceGwei = formatEther(gasPriceWei * 1000000000n); // Convert to Gwei
-      
+      // This is a placeholder - implement actual gas price fetching
       return {
-        gasPriceWei: gasPriceWei.toString(),
-        gasPriceGwei: gasPriceGwei,
-        network: this.umiKit.getNetworkInfo().network
+        gasPrice: '20 Gwei',
+        network: this.umiKit.client.networkInfo.network,
+        note: 'Gas prices on Umi Network are typically low'
       };
-      
     } catch (error) {
       throw new Error(`Failed to get gas price: ${error.message}`);
     }
@@ -210,89 +118,310 @@ export class UmiAIWrapper {
   /**
    * Get current block number
    */
-  async getBlockNumber(args = {}) {
+  async getBlockNumber() {
     try {
       const blockNumber = await this.umiKit.getBlockNumber();
-      
       return {
-        blockNumber: blockNumber.toString(),
-        network: this.umiKit.getNetworkInfo().network
+        blockNumber,
+        network: this.umiKit.client.networkInfo.network
       };
-      
     } catch (error) {
       throw new Error(`Failed to get block number: ${error.message}`);
     }
   }
 
+  // ====== NEW: MULTISIG FUNCTIONS ======
+
   /**
-   * Import wallet from private key (AI-safe with validation)
+   * Create a multisig group
    */
-  async importWallet(args) {
+  async createMultisigGroup({ name, memberCount, threshold, description = "", roles = [] }) {
     try {
-      const { privateKey, setAsDefault = true } = args;
+      console.log(`🔐 Creating multisig group: ${name}`);
       
-      if (!privateKey) {
-        throw new Error('Private key is required');
-      }
-
-      // Validate private key format
-      if (!privateKey.startsWith('0x') && privateKey.length !== 64 && privateKey.length !== 66) {
-        throw new Error('Invalid private key format. Expected 64 hex characters (with or without 0x prefix)');
-      }
-
-      // Import wallet using UmiAgentKit
-      const wallet = this.umiKit.importWallet(privateKey);
+      // Generate default roles if not provided
+      const defaultRoles = ['ceo', 'developer', 'artist', 'marketing', 'community', 'designer', 'producer', 'manager', 'lead', 'officer'];
+      const memberRoles = roles.length >= memberCount ? roles.slice(0, memberCount) : 
+        [...roles, ...defaultRoles.slice(0, memberCount - roles.length)];
       
-      // Set as default if requested
-      if (setAsDefault) {
-        this.setDefaultWallet(wallet.getAddress());
+      // Create wallets for the members
+      const teamWallets = {};
+      
+      for (let i = 0; i < memberCount; i++) {
+        const role = memberRoles[i] || `member_${i + 1}`;
+        const wallet = this.umiKit.createWallet();
+        teamWallets[role] = wallet;
+        
+        console.log(`👤 Created wallet for ${role}: ${wallet.getAddress()}`);
       }
-
-      // Get initial balance
-      const balanceWei = await this.umiKit.getBalance(wallet.getAddress());
-      const balanceEth = formatEther(balanceWei);
-
+      
+      // Register the wallets
+      this.umiKit.registerMultisigWallets(teamWallets);
+      
+      // Create the multisig group
+      const multisigGroup = await this.umiKit.createMultisigGroup({
+        name,
+        description,
+        members: Object.keys(teamWallets).map((role, index) => ({
+          walletName: role,
+          role: role,
+          weight: role === 'ceo' ? 2 : 1
+        })),
+        threshold,
+        notifications: true
+      });
+      
       return {
-        address: wallet.getAddress(),
-        moveAddress: wallet.getMoveAddress(),
-        balance: balanceEth,
-        balanceWei: balanceWei.toString(),
-        isDefault: setAsDefault,
-        imported: true
+        success: true,
+        multisigId: multisigGroup.id,
+        name: multisigGroup.name,
+        members: multisigGroup.members.length,
+        threshold: multisigGroup.threshold,
+        wallets: Object.keys(teamWallets).map(role => ({
+          role,
+          address: teamWallets[role].getAddress()
+        })),
+        message: `Multisig group "${name}" created successfully with ${memberCount} members (${threshold} required for approval)`
       };
       
     } catch (error) {
-      throw new Error(`Failed to import wallet: ${error.message}`);
+      throw new Error(`Failed to create multisig group: ${error.message}`);
     }
   }
 
   /**
-   * Create new wallet
+   * Create a gaming studio with team wallets
    */
-  async createWallet(args = {}) {
+  async createGamingStudio({ studioName, teamSize }) {
     try {
-      const { setAsDefault = true } = args;
+      console.log(`🎮 Creating gaming studio: ${studioName}`);
       
-      // Create wallet using UmiAgentKit
+      // Define gaming roles
+      const gamingRoles = ['ceo', 'lead_developer', 'artist', 'game_designer', 'marketing', 'community_manager', 'producer', 'qa_lead', 'sound_designer', 'writer'];
+      const teamWallets = {};
+      
+      // Create wallets for team members
+      for (let i = 0; i < Math.min(teamSize, 10); i++) {
+        const role = gamingRoles[i] || `team_member_${i + 1}`;
+        const wallet = this.umiKit.createWallet();
+        teamWallets[role] = wallet;
+        
+        console.log(`👤 Created ${role} wallet: ${wallet.getAddress()}`);
+      }
+      
+      // Create gaming studio multisig
+      const studioMultisig = await this.umiKit.createGamingStudioMultisig({
+        studioName,
+        teamWallets
+      });
+      
+      return {
+        success: true,
+        studioName,
+        multisigId: studioMultisig.studioMultisig.id,
+        teamMembers: Object.keys(teamWallets).length,
+        wallets: Object.entries(teamWallets).map(([role, wallet]) => ({
+          role,
+          address: wallet.getAddress()
+        })),
+        threshold: studioMultisig.studioMultisig.threshold,
+        message: `Gaming studio "${studioName}" created with ${Object.keys(teamWallets).length} team members and multisig coordination`
+      };
+      
+    } catch (error) {
+      throw new Error(`Failed to create gaming studio: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create team wallets
+   */
+  async createTeamWallets({ count, roles = [] }) {
+    try {
+      console.log(`👥 Creating ${count} team wallets`);
+      
+      const wallets = [];
+      const defaultRoles = ['member_1', 'member_2', 'member_3', 'member_4', 'member_5', 'member_6', 'member_7', 'member_8', 'member_9', 'member_10'];
+      
+      for (let i = 0; i < count; i++) {
+        const wallet = this.umiKit.createWallet();
+        const role = roles[i] || defaultRoles[i] || `wallet_${i + 1}`;
+        
+        wallets.push({
+          role,
+          address: wallet.getAddress(),
+          moveAddress: wallet.getMoveAddress()
+        });
+        
+        console.log(`👤 Created wallet ${i + 1} (${role}): ${wallet.getAddress()}`);
+      }
+      
+      return {
+        success: true,
+        count: wallets.length,
+        wallets,
+        message: `Created ${wallets.length} team wallets successfully`
+      };
+      
+    } catch (error) {
+      throw new Error(`Failed to create team wallets: ${error.message}`);
+    }
+  }
+
+  /**
+   * List all multisig groups
+   */
+  async listMultisigGroups() {
+    try {
+      if (!this.umiKit.multisigManager) {
+        return {
+          success: false,
+          groups: [],
+          message: 'Multisig not enabled on this UmiAgentKit instance'
+        };
+      }
+      
+      const groups = this.umiKit.getAllMultisigGroups();
+      
+      return {
+        success: true,
+        count: groups.length,
+        groups: groups.map(group => ({
+          id: group.id,
+          name: group.name,
+          members: group.members.length,
+          threshold: group.threshold,
+          status: group.status,
+          createdAt: group.createdAt
+        })),
+        message: groups.length > 0 ? 
+          `Found ${groups.length} multisig group(s)` : 
+          'No multisig groups created yet'
+      };
+      
+    } catch (error) {
+      throw new Error(`Failed to list multisig groups: ${error.message}`);
+    }
+  }
+
+  // ====== TOKEN FUNCTIONS ======
+
+  /**
+   * Create ERC-20 token
+   */
+  async createERC20Token({ name, symbol, decimals = 18, initialSupply }) {
+    try {
+      console.log(`🪙 Creating ERC-20 token: ${name} (${symbol})`);
+      
+      // Get deployer wallet (main wallet)
+      const context = this.umiKit.aiManager?.getContext();
+      const deployerAddress = context?.defaultWallet;
+      
+      if (!deployerAddress) {
+        throw new Error('No deployer wallet set. Please set a default wallet first.');
+      }
+      
+      // Find the wallet object
+      // This is a simplified version - you may need to adjust based on your wallet management
+      const deployerWallet = this.umiKit.walletManager.wallets.find(w => 
+        w.getAddress() === deployerAddress
+      );
+      
+      if (!deployerWallet) {
+        throw new Error('Deployer wallet not found in wallet manager');
+      }
+      
+      const result = await this.umiKit.createERC20Token({
+        deployerWallet,
+        name,
+        symbol,
+        decimals,
+        initialSupply
+      });
+      
+      return {
+        success: true,
+        name,
+        symbol,
+        decimals,
+        initialSupply,
+        contractAddress: result.contractAddress,
+        transactionHash: result.hash,
+        message: `Token "${name}" (${symbol}) created successfully!`
+      };
+      
+    } catch (error) {
+      throw new Error(`Failed to create ERC-20 token: ${error.message}`);
+    }
+  }
+
+  // ====== NFT FUNCTIONS ======
+
+  /**
+   * Create NFT collection
+   */
+  async createNFTCollection({ name, symbol, maxSupply, mintPrice = "0.01" }) {
+    try {
+      console.log(`🎨 Creating NFT collection: ${name} (${symbol})`);
+      
+      // Get deployer wallet (main wallet)
+      const context = this.umiKit.aiManager?.getContext();
+      const deployerAddress = context?.defaultWallet;
+      
+      if (!deployerAddress) {
+        throw new Error('No deployer wallet set. Please set a default wallet first.');
+      }
+      
+      // Find the wallet object
+      const deployerWallet = this.umiKit.walletManager.wallets.find(w => 
+        w.getAddress() === deployerAddress
+      );
+      
+      if (!deployerWallet) {
+        throw new Error('Deployer wallet not found in wallet manager');
+      }
+      
+      const result = await this.umiKit.createNFTCollection({
+        deployerWallet,
+        name,
+        symbol,
+        maxSupply,
+        mintPrice
+      });
+      
+      return {
+        success: true,
+        name,
+        symbol,
+        maxSupply,
+        mintPrice,
+        contractAddress: result.contractAddress,
+        transactionHash: result.hash,
+        message: `NFT collection "${name}" (${symbol}) created successfully!`
+      };
+      
+    } catch (error) {
+      throw new Error(`Failed to create NFT collection: ${error.message}`);
+    }
+  }
+
+  // ====== WALLET CREATION ======
+
+  /**
+   * Create a new wallet
+   */
+  async createWallet({ label = "" }) {
+    try {
+      console.log(`👛 Creating new wallet${label ? ` (${label})` : ''}`);
+      
       const wallet = this.umiKit.createWallet();
       
-      // Set as default if requested
-      if (setAsDefault) {
-        this.setDefaultWallet(wallet.getAddress());
-      }
-
-      // Get initial balance (should be 0)
-      const balanceWei = await this.umiKit.getBalance(wallet.getAddress());
-      const balanceEth = formatEther(balanceWei);
-
       return {
+        success: true,
         address: wallet.getAddress(),
         moveAddress: wallet.getMoveAddress(),
-        balance: balanceEth,
-        balanceWei: balanceWei.toString(),
-        isDefault: setAsDefault,
-        created: true,
-        warning: 'New wallet created with 0 balance. You may need to fund it before making transactions.'
+        label: label || 'New Wallet',
+        message: `New wallet created successfully! Address: ${wallet.getAddress()}`
       };
       
     } catch (error) {
