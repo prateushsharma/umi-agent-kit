@@ -2,7 +2,7 @@
 export const DEFAULT_CONFIG = {
   devnet: {
     name: 'Umi Devnet',
-    rpcUrl: 'https://devnet.moved.network',
+    rpcUrl: 'https://devnet.uminetwork.com',
     chainId: 42069,
     currency: {
       decimals: 18,
