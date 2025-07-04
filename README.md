@@ -752,7 +752,414 @@ await kit.chat(
 );
 ```
 
+# UmiAgentKit - All New Deployment Functions
+
+## 🎯 **Complete Reference Guide**
+
+### **Core Deployment Functions**
+
 ---
+
+#### **1. deployContracts(contractsPath, deployerWallet)**
+
+Deploy multiple Move contracts without constructor values.
+
+```javascript
+const contracts = await kit.deployContracts('./contracts/', wallet);
+// Returns: { GameToken: {...}, HeroNFT: {...}, Tournament: {...} }
+```
+
+**Parameters:**
+- `contractsPath` - Path to folder containing .move files
+- `deployerWallet` - UmiWallet object for deployment
+
+**Returns:** Object with deployed contract details
+
+---
+
+#### **2. setConstructorValues(contractAddress, constructorArgs, callerWallet)**
+
+Initialize contracts after deployment with constructor values.
+
+```javascript
+await kit.setConstructorValues(contracts.GameToken.address, {
+  name: 'GameCoin',
+  symbol: 'GAME', 
+  decimals: 8,
+  initial_supply: 1000000
+}, wallet);
+```
+
+**Parameters:**
+- `contractAddress` - Deployed contract address (e.g., "0x123::gametoken")
+- `constructorArgs` - Object with initialization parameters
+- `callerWallet` - UmiWallet object for the transaction
+
+**Returns:** Transaction result with hash
+
+---
+
+#### **3. deployWithJson(contractsPath, deployerWallet, configFile)**
+
+Deploy contracts using JSON configuration file.
+
+```javascript
+// Uses ./contracts/deployment.json
+const ecosystem = await kit.deployWithJson('./contracts/', wallet);
+
+// Uses custom config file
+const ecosystem = await kit.deployWithJson('./contracts/', wallet, './my-config.json');
+```
+
+**Parameters:**
+- `contractsPath` - Path to contracts folder
+- `deployerWallet` - UmiWallet object for deployment  
+- `configFile` - Optional path to config file (defaults to deployment.json)
+
+**Example deployment.json:**
+```json
+{
+  "contracts": {
+    "GameToken": {
+      "file": "GameToken.move",
+      "dependencies": [],
+      "initArgs": {
+        "name": "GameCoin",
+        "symbol": "GAME",
+        "decimals": 8,
+        "initial_supply": 1000000
+      }
+    },
+    "HeroNFT": {
+      "file": "HeroNFT.move",
+      "dependencies": ["GameToken"],
+      "initArgs": {
+        "name": "Epic Heroes",
+        "game_token": "@GameToken"
+      }
+    }
+  }
+}
+```
+
+**Returns:** Object with deployed ecosystem
+
+---
+
+#### **4. deployWithConfig(contractsPath, deployerWallet, configObject)**
+
+Deploy contracts using JavaScript configuration object.
+
+```javascript
+const ecosystem = await kit.deployWithConfig('./contracts/', wallet, {
+  GameToken: { 
+    name: 'GameCoin', 
+    symbol: 'GAME', 
+    decimals: 8,
+    initial_supply: 1000000
+  },
+  HeroNFT: { 
+    name: 'Epic Heroes', 
+    symbol: 'HERO',
+    game_token: '@GameToken'  // Reference to GameToken
+  },
+  Tournament: {
+    name: 'Epic Tournament',
+    entry_fee: 10,
+    game_token: '@GameToken',
+    hero_nft: '@HeroNFT'
+  }
+});
+```
+
+**Parameters:**
+- `contractsPath` - Path to contracts folder
+- `deployerWallet` - UmiWallet object for deployment
+- `configObject` - JavaScript object with contract configurations
+
+**Returns:** Object with deployed ecosystem
+
+---
+
+### **Utility Functions**
+
+---
+
+#### **5. deploySingleContract(contractPath, deployerWallet, constructorArgs)**
+
+Deploy a single Move contract file.
+
+```javascript
+const gameToken = await kit.deploySingleContract(
+  './contracts/GameToken.move',
+  wallet,
+  {
+    name: 'GameCoin',
+    symbol: 'GAME',
+    decimals: 8,
+    initial_supply: 1000000
+  }
+);
+```
+
+**Parameters:**
+- `contractPath` - Path to single .move file
+- `deployerWallet` - UmiWallet object for deployment
+- `constructorArgs` - Optional constructor arguments
+
+**Returns:** Single deployed contract object
+
+---
+
+#### **6. getContractFunctions(deployedContract)**
+
+Get list of available functions from a deployed contract.
+
+```javascript
+const functions = kit.getContractFunctions(deployedContract);
+console.log(functions);
+// [
+//   { name: 'initialize', type: 'entry', visibility: 'public' },
+//   { name: 'mint', type: 'entry', visibility: 'public' },
+//   { name: 'get_balance', type: 'view', visibility: 'public' }
+// ]
+```
+
+**Parameters:**
+- `deployedContract` - Contract object from deployment
+
+**Returns:** Array of function objects with name, type, and visibility
+
+---
+
+#### **7. callContractFunction(contractAddress, functionName, args, callerWallet)**
+
+Call any function on a deployed Move contract.
+
+```javascript
+// Call a minting function
+const mintResult = await kit.callContractFunction(
+  '0x123::gametoken',
+  'mint',
+  {
+    to: wallet.getAddress(),
+    amount: 1000
+  },
+  wallet
+);
+
+// Call a view function
+const balanceResult = await kit.callContractFunction(
+  '0x123::gametoken', 
+  'get_balance',
+  {
+    account: wallet.getAddress()
+  },
+  wallet
+);
+```
+
+**Parameters:**
+- `contractAddress` - Module address (e.g., "0x123::gametoken")
+- `functionName` - Name of function to call
+- `args` - Object with function arguments
+- `callerWallet` - UmiWallet object for the transaction
+
+**Returns:** Transaction result with hash and receipt
+
+---
+
+#### **8. getDeploymentSummary(deployedContracts)**
+
+Get summary statistics of deployment results.
+
+```javascript
+const summary = kit.getDeploymentSummary(deployedContracts);
+console.log(summary);
+// {
+//   totalContracts: 3,
+//   contracts: {
+//     GameToken: {
+//       address: "0x123::gametoken",
+//       type: "move", 
+//       initialized: true,
+//       txHash: "0xabc..."
+//     },
+//     HeroNFT: { ... },
+//     Tournament: { ... }
+//   },
+//   totalGasUsed: 0
+// }
+```
+
+**Parameters:**
+- `deployedContracts` - Object with deployed contracts
+
+**Returns:** Summary object with statistics
+
+---
+
+#### **9. exportDeploymentResults(deployedContracts, outputPath)**
+
+Export deployment results to JSON file for later reference.
+
+```javascript
+await kit.exportDeploymentResults(
+  deployedContracts, 
+  './deployment-results.json'
+);
+```
+
+**Generated file structure:**
+```json
+{
+  "timestamp": "2025-01-07T10:30:00.000Z",
+  "network": "devnet",
+  "summary": {
+    "totalContracts": 3,
+    "contracts": { ... }
+  },
+  "contracts": {
+    "GameToken": {
+      "address": "0x123::gametoken",
+      "txHash": "0xabc...",
+      "type": "move",
+      "initialized": true
+    }
+  }
+}
+```
+
+**Parameters:**
+- `deployedContracts` - Object with deployed contracts
+- `outputPath` - File path to save results (default: './deployment-results.json')
+
+**Returns:** Promise that resolves when file is written
+
+---
+
+#### **10. validateContracts(contractsPath)**
+
+Validate Move contracts before deployment to catch syntax errors.
+
+```javascript
+try {
+  await kit.validateContracts('./contracts/');
+  console.log('✅ All contracts are valid!');
+} catch (error) {
+  console.error('❌ Validation failed:', error.message);
+}
+```
+
+**Parameters:**
+- `contractsPath` - Path to contracts folder
+
+**Returns:** Promise that resolves if valid, rejects if invalid
+
+**Validation checks:**
+- Move syntax validation
+- Module declaration presence
+- Function structure verification
+
+---
+
+## 🎯 **Usage Examples**
+
+### **Complete Workflow Example**
+
+```javascript
+import { UmiAgentKit } from 'umi-agent-kit';
+
+const kit = new UmiAgentKit({ network: 'devnet' });
+const wallet = kit.importWallet(process.env.PRIVATE_KEY);
+
+// Option 1: Deploy now, constructor later
+const contracts = await kit.deployContracts('./contracts/', wallet);
+
+await kit.setConstructorValues(contracts.GameToken.address, {
+  name: 'GameCoin',
+  symbol: 'GAME',
+  decimals: 8,
+  initial_supply: 1000000
+}, wallet);
+
+// Option 2: Deploy with JSON config
+const ecosystem = await kit.deployWithJson('./contracts/', wallet);
+
+// Option 3: Deploy with config object
+const ecosystem2 = await kit.deployWithConfig('./contracts/', wallet, {
+  GameToken: { name: 'GameCoin', symbol: 'GAME' },
+  HeroNFT: { name: 'Epic Heroes', gameToken: '@GameToken' }
+});
+
+// Call deployed contract functions
+const mintResult = await kit.callContractFunction(
+  ecosystem.GameToken.address,
+  'mint',
+  { to: wallet.getAddress(), amount: 1000 },
+  wallet
+);
+
+// Export results
+await kit.exportDeploymentResults(ecosystem, './results.json');
+```
+
+### **Error Handling Example**
+
+```javascript
+try {
+  // Validate before deployment
+  await kit.validateContracts('./contracts/');
+  
+  // Deploy contracts
+  const contracts = await kit.deployContracts('./contracts/', wallet);
+  
+  // Initialize contracts
+  for (const [name, contract] of Object.entries(contracts)) {
+    if (!contract.initialized) {
+      await kit.setConstructorValues(contract.address, {
+        name: `${name}Token`,
+        symbol: name.toUpperCase()
+      }, wallet);
+    }
+  }
+  
+  console.log('🎉 Deployment successful!');
+  
+} catch (error) {
+  console.error('💥 Deployment failed:', error.message);
+  
+  if (error.message.includes('gas')) {
+    console.log('💡 Try increasing gas limit or check wallet balance');
+  }
+  
+  if (error.message.includes('compilation')) {
+    console.log('💡 Check Move contract syntax');
+  }
+}
+```
+
+---
+
+## 📋 **Function Categories Summary**
+
+### **🚀 Primary Deployment (3 options)**
+- `deployContracts()` - Deploy now, constructor later
+- `deployWithJson()` - Deploy with JSON configuration  
+- `deployWithConfig()` - Deploy with JavaScript object
+
+### **⚙️ Constructor & Initialization**
+- `setConstructorValues()` - Initialize contracts after deployment
+
+### **🔧 Utilities & Management**
+- `deploySingleContract()` - Single contract deployment
+- `getContractFunctions()` - Function inspection
+- `callContractFunction()` - Generic function calling
+- `getDeploymentSummary()` - Deployment statistics
+- `exportDeploymentResults()` - Save results to file
+- `validateContracts()` - Pre-deployment validation
+
+**Total: 10 comprehensive deployment functions for complete Move contract ecosystem management** 🎯
 
 ## 🎨 **Visual Examples**
 
