@@ -1,8 +1,7 @@
 /**
  * FILE LOCATION: src/deployment/MoveDeploymentEngine.js
  * 
- * Move deployment using YOUR EXISTING working BCS serialization method
- * Based on your successful createMoveToken/createMoveNFTCollection approach
+ * REPLACE THE deployMoveContract method with this fixed version
  */
 
 import { 
@@ -14,6 +13,9 @@ import {
   U8
 } from '@aptos-labs/ts-sdk';
 
+import { createWalletClient, http } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+
 export class MoveDeploymentEngine {
   constructor(umiKit) {
     this.kit = umiKit;
@@ -22,23 +24,26 @@ export class MoveDeploymentEngine {
 
   /**
    * Deploy Move contract using YOUR existing working method
-   * Based on your successful createMoveToken approach - no Hardhat needed!
+   * FIXED: Use proper viem walletClient like your existing code
    */
   async deployMoveContract(contract, deployerWallet, initArgs = {}) {
     try {
       console.log(`🚀 Deploying Move contract: ${contract.name} (using existing working method)`);
 
-      // Step 1: Process the Move contract (replace address placeholders)
+      // Step 1: Create viem walletClient (like your existing working code)
+      const walletClient = this.createWalletClient(deployerWallet);
+      
+      // Step 2: Process the Move contract (replace address placeholders)
       const processedContract = this.processContract(contract, deployerWallet);
       
-      // Step 2: Create deployment payload using YOUR existing _createMoveDeploymentPayload method
+      // Step 3: Create deployment payload using YOUR existing method
       const deploymentPayload = this.createDeploymentPayload(processedContract, deployerWallet);
       
-      // Step 3: Serialize using YOUR existing working _serializeForUmi method
+      // Step 4: Serialize using YOUR existing working _serializeForUmi method
       const serializedPayload = this.serializeForUmi(deploymentPayload);
       
-      // Step 4: Deploy using YOUR existing transaction method
-      const txHash = await deployerWallet.sendTransaction({
+      // Step 5: Deploy using viem walletClient (like your existing working code)
+      const txHash = await walletClient.sendTransaction({
         to: deployerWallet.getAddress(),
         data: serializedPayload,
         gas: 3000000n
@@ -46,13 +51,13 @@ export class MoveDeploymentEngine {
       
       console.log(`📝 Move deployment transaction: ${txHash}`);
       
-      // Step 5: Wait for confirmation
+      // Step 6: Wait for confirmation
       const receipt = await this.client.waitForTransaction(txHash);
       
-      // Step 6: Get module address
+      // Step 7: Get module address
       const moduleAddress = this.getModuleAddress(deployerWallet.getAddress(), contract.name);
       
-      // Step 7: Initialize if args provided
+      // Step 8: Initialize if args provided
       if (Object.keys(initArgs).length > 0) {
         await this.initializeContract(moduleAddress, initArgs, deployerWallet);
       }
@@ -73,8 +78,81 @@ export class MoveDeploymentEngine {
   }
 
   /**
+   * Create viem walletClient from UmiAgentKit wallet (like your existing working code)
+   */
+  createWalletClient(deployerWallet) {
+    try {
+      // Get private key from UmiAgentKit wallet
+      const privateKey = deployerWallet.getPrivateKey();
+      
+      // Ensure proper format
+      const formattedKey = privateKey.startsWith('0x') ? privateKey : '0x' + privateKey;
+      
+      // Create account (like your existing code)
+      const account = privateKeyToAccount(formattedKey);
+      
+      // Create walletClient (like your existing code)
+      const walletClient = createWalletClient({
+        account,
+        chain: this.kit.client.chain,
+        transport: http(this.kit.client.chain.rpcUrls.default.http[0])
+      });
+      
+      return walletClient;
+      
+    } catch (error) {
+      throw new Error(`Failed to create wallet client: ${error.message}`);
+    }
+  }
+
+  /**
+   * Initialize contract after deployment using viem walletClient
+   */
+  async initializeContract(moduleAddress, initArgs, deployerWallet) {
+    try {
+      console.log(`⚙️ Initializing contract: ${moduleAddress}`);
+      console.log(`📝 Args:`, initArgs);
+      
+      // Create viem walletClient for initialization
+      const walletClient = this.createWalletClient(deployerWallet);
+      
+      // Convert init args to BCS format
+      const bcsArgs = this.convertArgsToBCS(initArgs);
+      
+      // Create initialize function call
+      const entryFunction = EntryFunction.build(
+        moduleAddress,
+        'initialize',
+        [],
+        bcsArgs
+      );
+      
+      const transactionPayload = new TransactionPayloadEntryFunction(entryFunction);
+      const payload = transactionPayload.bcsToHex().toString();
+      const serializedPayload = this.serializeForUmi(payload);
+      
+      const txHash = await walletClient.sendTransaction({
+        to: deployerWallet.getAddress(),
+        data: serializedPayload,
+        gas: 1000000n
+      });
+      
+      console.log(`✅ Contract initialized: ${txHash}`);
+      
+      await this.client.waitForTransaction(txHash);
+      
+      return { hash: txHash };
+      
+    } catch (error) {
+      throw new Error(`Contract initialization failed: ${error.message}`);
+    }
+  }
+
+  // ===== KEEP ALL OTHER METHODS THE SAME =====
+  // (processContract, createDeploymentPayload, serializeForUmi, etc.)
+
+  /**
    * Process Move contract - replace address placeholders with actual deployer address
-   * Based on your existing approach
    */
   processContract(contract, deployerWallet) {
     // Convert ETH address to Move address format (using your existing method)
@@ -96,12 +174,10 @@ export class MoveDeploymentEngine {
 
   /**
    * Create deployment payload using YOUR existing _createMoveDeploymentPayload method
-   * This is the same method that works in createMoveToken
    */
   createDeploymentPayload(processedContract, deployerWallet) {
     try {
       // Use your existing TokenManager's _createMoveDeploymentPayload method
-      // This is the PROVEN method that works
       if (this.kit.tokenManager && typeof this.kit.tokenManager._createMoveDeploymentPayload === 'function') {
         return this.kit.tokenManager._createMoveDeploymentPayload(
           processedContract.content,
@@ -147,12 +223,10 @@ export class MoveDeploymentEngine {
 
   /**
    * Serialize for Umi using YOUR existing working _serializeForUmi method
-   * This is the PROVEN method that works for ERC-20 deployment
    */
   serializeForUmi(payload) {
     try {
       // Use your existing TokenManager's _serializeForUmi method
-      // This is the SAME method that successfully deploys ERC-20 contracts
       if (this.kit.tokenManager && typeof this.kit.tokenManager._serializeForUmi === 'function') {
         return this.kit.tokenManager._serializeForUmi(payload);
       }
@@ -188,46 +262,6 @@ export class MoveDeploymentEngine {
       
     } catch (error) {
       throw new Error(`Fallback serialization failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Initialize contract after deployment
-   */
-  async initializeContract(moduleAddress, initArgs, deployerWallet) {
-    try {
-      console.log(`⚙️ Initializing contract: ${moduleAddress}`);
-      console.log(`📝 Args:`, initArgs);
-      
-      // Convert init args to BCS format
-      const bcsArgs = this.convertArgsToBCS(initArgs);
-      
-      // Create initialize function call
-      const entryFunction = EntryFunction.build(
-        moduleAddress,
-        'initialize',
-        [],
-        bcsArgs
-      );
-      
-      const transactionPayload = new TransactionPayloadEntryFunction(entryFunction);
-      const payload = transactionPayload.bcsToHex().toString();
-      const serializedPayload = this.serializeForUmi(payload);
-      
-      const txHash = await deployerWallet.sendTransaction({
-        to: deployerWallet.getAddress(),
-        data: serializedPayload,
-        gas: 1000000n
-      });
-      
-      console.log(`✅ Contract initialized: ${txHash}`);
-      
-      await this.client.waitForTransaction(txHash);
-      
-      return { hash: txHash };
-      
-    } catch (error) {
-      throw new Error(`Contract initialization failed: ${error.message}`);
     }
   }
 
@@ -305,51 +339,6 @@ export class MoveDeploymentEngine {
       ]);
     } else {
       throw new Error('Contract too large for deployment');
-    }
-  }
-
-  /**
-   * Extract functions from Move contract
-   */
-  extractMoveFunctions(moveCode) {
-    const functions = [];
-    const lines = moveCode.split('\n');
-    
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      
-      if (trimmedLine.includes('public fun ') || trimmedLine.includes('public entry fun ')) {
-        const funcInfo = this.parseFunctionSignature(trimmedLine);
-        if (funcInfo) {
-          functions.push(funcInfo);
-        }
-      }
-    }
-    
-    return functions;
-  }
-
-  /**
-   * Parse function signature from Move code line
-   */
-  parseFunctionSignature(line) {
-    try {
-      const isEntry = line.includes('entry');
-      const match = line.match(/public\s+(?:entry\s+)?fun\s+(\w+)\s*\([^)]*\)/);
-      
-      if (match) {
-        return {
-          name: match[1],
-          type: isEntry ? 'entry' : 'view',
-          visibility: 'public',
-          signature: line.trim()
-        };
-      }
-      
-      return null;
-    } catch (error) {
-      console.warn(`Failed to parse function signature: ${line}`);
-      return null;
     }
   }
 }
