@@ -1,8 +1,4 @@
-/**
- * FILE LOCATION: src/deployment/MultiContractDeployer.js (UPDATED)
- * 
- * REPLACE the existing MultiContractDeployer.js with this fixed version
- */
+
 
 import { DependencyResolver } from './DependencyResolver.js';
 import { UmiMoveDeploymentEngine } from './UmiMoveDeploymentEngine.js'; // UPDATED IMPORT
