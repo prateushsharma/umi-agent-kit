@@ -22,6 +22,7 @@ import { validateConfig } from './config.js';
 import { parseEther } from 'viem';
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { MultiContractDeployer } from './deployment/MultiContractDeployer.js';
 
 export class UmiAgentKit {
   constructor(config = {}) {
@@ -60,7 +61,10 @@ export class UmiAgentKit {
     // AI Manager will be initialized when enableAI() is called
     this.aiManager = null;
 
-    console.log(`UmiAgentKit initialized on ${this.config.network}`);
+    // Add deployment manager
+    this.deploymentManager = new MultiContractDeployer(this);
+
+     console.log(`UmiAgentKit initialized on ${this.config.network} with deployment support`);
   }
 
   // ====== NEW: AI INTEGRATION METHODS ======
@@ -1871,4 +1875,208 @@ export class UmiAgentKit {
     }
     console.log('UmiAgentKit closed');
   }
+
+  // ======== Deployment Setup ========
+  /**
+ * Deploy contracts without constructor values
+ * Constructor values will be set later via setConstructorValues()
+ */
+async deployContracts(contractsPath, deployerWallet) {
+  try {
+    console.log(`🚀 Starting deployment from ${contractsPath}...`);
+    
+    const deployed = await this.deploymentManager.deployContractsOnly(
+      contractsPath, 
+      deployerWallet
+    );
+    
+    console.log(`✅ Deployment complete! ${Object.keys(deployed).length} contract(s) deployed.`);
+    return deployed;
+
+  } catch (error) {
+    throw new Error(`Deploy contracts failed: ${error.message}`);
+  }
+}
+/**
+ * Set constructor values after deployment
+ * Use this after deployContracts() to initialize specific contracts
+ */
+async setConstructorValues(contractAddress, constructorArgs, callerWallet) {
+  try {
+    console.log(`⚙️ Setting constructor values for contract: ${contractAddress}`);
+    
+    const result = await this.deploymentManager.setConstructorValues(
+      contractAddress,
+      constructorArgs,
+      callerWallet
+    );
+    
+    console.log(`✅ Constructor values set successfully!`);
+    return result;
+
+  } catch (error) {
+    throw new Error(`Set constructor values failed: ${error.message}`);
+  }
+}
+// ====== OPTION 2: DEPLOY WITH DEPLOYMENT.JSON ======
+
+/**
+ * Deploy contracts using deployment.json configuration file
+ * Looks for deployment.json in contractsPath or uses provided configFile
+ */
+async deployWithJson(contractsPath, deployerWallet, configFile = null) {
+  try {
+    console.log(`🚀 Starting deployment with JSON config...`);
+    
+    const deployed = await this.deploymentManager.deployWithJson(
+      contractsPath,
+      deployerWallet,
+      configFile
+    );
+    
+    console.log(`✅ JSON deployment complete! ${Object.keys(deployed).length} contract(s) deployed.`);
+    return deployed;
+
+  } catch (error) {
+    throw new Error(`Deploy with JSON failed: ${error.message}`);
+  }
+}
+// ====== OPTION 3: DEPLOY WITH CONFIG OBJECT ======
+
+/**
+ * Deploy contracts with JavaScript config object
+ * No JSON files needed - pass configuration directly as object
+ */
+async deployWithConfig(contractsPath, deployerWallet, configObject = {}) {
+  try {
+    console.log(`🚀 Starting deployment with config object...`);
+    
+    const deployed = await this.deploymentManager.deployWithConfig(
+      contractsPath,
+      deployerWallet,
+      configObject
+    );
+    
+    console.log(`✅ Config deployment complete! ${Object.keys(deployed).length} contract(s) deployed.`);
+    return deployed;
+
+  } catch (error) {
+    throw new Error(`Deploy with config failed: ${error.message}`);
+  }
+}
+// ====== ADDITIONAL DEPLOYMENT UTILITIES ======
+
+/**
+ * Deploy a single Move contract
+ * Convenience method for deploying just one contract
+ */
+async deploySingleContract(contractPath, deployerWallet, constructorArgs = {}) {
+  try {
+    console.log(`🚀 Deploying single contract: ${contractPath}`);
+    
+    // Read the contract file
+    const fs = await import('fs/promises');
+    const contractContent = await fs.readFile(contractPath, 'utf8');
+    const contractName = contractPath.split('/').pop().replace('.move', '');
+    
+    const contract = {
+      name: contractName,
+      content: contractContent,
+      path: contractPath
+    };
+    
+    // Deploy with or without constructor args
+    let result;
+    if (Object.keys(constructorArgs).length > 0) {
+      result = await this.deploymentManager.deployWithConstructor(
+        contract,
+        deployerWallet,
+        constructorArgs
+      );
+    } else {
+      result = await this.deploymentManager.deployModuleOnly(
+        contract,
+        deployerWallet
+      );
+    }
+    
+    console.log(`✅ Single contract deployed: ${result.address}`);
+    return result;
+
+  } catch (error) {
+    throw new Error(`Deploy single contract failed: ${error.message}`);
+  }
+}
+
+/**
+ * Get contract functions after deployment
+ * Returns list of available functions for a deployed contract
+ */
+getContractFunctions(deployedContract) {
+  return this.deploymentManager.getContractFunctions(deployedContract);
+}
+
+/**
+ * Call a function on a deployed contract
+ * Generic method to call any function on any deployed Move contract
+ */
+async callContractFunction(contractAddress, functionName, args, callerWallet) {
+  try {
+    console.log(`📞 Calling function ${functionName} on ${contractAddress}`);
+    
+    const result = await this.deploymentManager.callContractFunction(
+      contractAddress,
+      functionName,
+      args,
+      callerWallet
+    );
+    
+    console.log(`✅ Function call successful: ${result.hash}`);
+    return result;
+
+  } catch (error) {
+    throw new Error(`Contract function call failed: ${error.message}`);
+  }
+}
+
+/**
+ * Get deployment summary
+ * Returns summary information about deployed contracts
+ */
+getDeploymentSummary(deployedContracts) {
+  return this.deploymentManager.getDeploymentSummary(deployedContracts);
+}
+
+/**
+ * Export deployment results to file
+ * Save deployment information to JSON file for later reference
+ */
+async exportDeploymentResults(deployedContracts, outputPath = './deployment-results.json') {
+  try {
+    await this.deploymentManager.exportDeploymentResults(deployedContracts, outputPath);
+    console.log(`📄 Deployment results exported to: ${outputPath}`);
+
+  } catch (error) {
+    console.warn(`Failed to export deployment results: ${error.message}`);
+  }
+}
+
+/**
+ * Validate contracts before deployment
+ * Check contracts for basic syntax and structure issues
+ */
+async validateContracts(contractsPath) {
+  try {
+    const contracts = await this.deploymentManager.scanContractsFolder(contractsPath);
+    await this.deploymentManager.validateContracts(contracts);
+    
+    console.log(`✅ All contracts validated successfully`);
+    return true;
+
+  } catch (error) {
+    throw new Error(`Contract validation failed: ${error.message}`);
+  }
+}
+
+
 }

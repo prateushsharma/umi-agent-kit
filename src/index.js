@@ -23,3 +23,9 @@ export { ProposalEngine } from './multisig/ProposalEngine.js';
 export { PermissionSystem } from './multisig/PermissionSystem.js';
 export { NotificationService } from './multisig/NotificationService.js';
 export { MultisigStorage } from './multisig/MultisigStorage.js';
+
+// Deployment exports
+export { MultiContractDeployer } from './deployment/MultiContractDeployer.js';
+export { DependencyResolver } from './deployment/DependencyResolver.js';
+export { MoveDeploymentEngine } from './deployment/MoveDeploymentEngine.js';
+*/
