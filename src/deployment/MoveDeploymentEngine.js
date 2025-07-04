@@ -83,7 +83,7 @@ export class MoveDeploymentEngine {
   createWalletClient(deployerWallet) {
     try {
       // Get private key from UmiAgentKit wallet
-      const privateKey = deployerWallet.getPrivateKey();
+      const privateKey = deployerWallet.exportPrivateKey();
       
       // Ensure proper format
       const formattedKey = privateKey.startsWith('0x') ? privateKey : '0x' + privateKey;
