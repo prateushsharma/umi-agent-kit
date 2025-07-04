@@ -1,3 +1,9 @@
+/**
+ * FILE LOCATION: src/index.js (in your umi-agent-kit source)
+ * 
+ * REPLACE your existing src/index.js with this updated version
+ */
+
 export { UmiAgentKit } from './UmiAgentKit.js';
 export { UmiWallet, ethToMoveAddress, moveToEthAddress } from './wallet/UmiWallet.js';
 export { WalletManager } from './wallet/WalletManager.js';
@@ -10,7 +16,7 @@ export { NFTCompiler } from './compiler/NFTCompiler.js';
 export { MoveNFTCompiler } from './compiler/MoveNFTCompiler.js';
 export { DEFAULT_CONFIG } from './config.js';
 
-// NEW: AI exports
+// AI exports
 export { AIManager } from './ai/AIManager.js';
 export { GroqEngine } from './ai/GroqEngine.js';
 export { UmiAIWrapper } from './ai/UmiAIWrapper.js';
@@ -24,7 +30,7 @@ export { PermissionSystem } from './multisig/PermissionSystem.js';
 export { NotificationService } from './multisig/NotificationService.js';
 export { MultisigStorage } from './multisig/MultisigStorage.js';
 
-// Deployment exports
+// NEW: Deployment exports (FIXED PATHS)
 export { MultiContractDeployer } from './deployment/MultiContractDeployer.js';
 export { DependencyResolver } from './deployment/DependencyResolver.js';
-export { MoveDeploymentEngine } from './deployment/MoveDeploymentEngine.js';
+export { UmiMoveDeploymentEngine } from './deployment/UmiMoveDeploymentEngine.js'; // UPDATED NAME
