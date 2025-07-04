@@ -1,7 +1,7 @@
 
 
 import { DependencyResolver } from './DependencyResolver.js';
-import { UmiMoveDeploymentEngine } from './UmiMoveDeploymentEngine.js'; // UPDATED IMPORT
+import { MoveDeploymentEngine } from './MoveDeploymentEngine.js'; // UPDATED IMPORT
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -9,7 +9,7 @@ export class MultiContractDeployer {
   constructor(umiKit) {
     this.kit = umiKit;
     this.dependencyResolver = new DependencyResolver();
-    this.moveEngine = new UmiMoveDeploymentEngine(umiKit); // FIXED ENGINE
+    this.moveEngine = new MoveDeploymentEngine(umiKit); 
   }
 
   // ========== OPTION 1: DEPLOY NOW, CONSTRUCTOR LATER ==========

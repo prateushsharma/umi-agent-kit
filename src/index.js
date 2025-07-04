@@ -33,4 +33,4 @@ export { MultisigStorage } from './multisig/MultisigStorage.js';
 // NEW: Deployment exports (FIXED PATHS)
 export { MultiContractDeployer } from './deployment/MultiContractDeployer.js';
 export { DependencyResolver } from './deployment/DependencyResolver.js';
-export { UmiMoveDeploymentEngine } from './deployment/UmiMoveDeploymentEngine.js'; 
+export { MoveDeploymentEngine } from './deployment/MoveDeploymentEngine.js'; 
