@@ -28,4 +28,3 @@ export { MultisigStorage } from './multisig/MultisigStorage.js';
 export { MultiContractDeployer } from './deployment/MultiContractDeployer.js';
 export { DependencyResolver } from './deployment/DependencyResolver.js';
 export { MoveDeploymentEngine } from './deployment/MoveDeploymentEngine.js';
-*/
