@@ -58,8 +58,7 @@ export class MoveDeploymentEngine {
       // ✅ Deploy using Umi-compatible transaction (your exact method)
       const hash = await walletClient.sendTransaction({
         to: account.address, // Deploy to own address for Move contracts (your exact pattern)
-        data: deploymentPayload,
-        gas: 3000000n, // Higher gas for Move contracts (your exact value)
+        data: deploymentPayload
       });
 
       console.log(`📝 Transaction hash: ${hash}`);
