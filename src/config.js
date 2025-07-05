@@ -9,7 +9,7 @@ export const DEFAULT_CONFIG = {
       name: 'Ether',
       symbol: 'ETH',
     },
-    blockExplorer: 'https://devnet.explorer.moved.network'
+    blockExplorer: 'https://devnet.explorer.uminetwork.com'
   },
   mainnet: {
     name: 'Umi Mainnet',
