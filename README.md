@@ -1161,38 +1161,158 @@ try {
 
 **Total: 10 comprehensive deployment functions for complete Move contract ecosystem management** 🎯
 
-## 🎨 **Visual Examples**
 
-### **💬 AI Conversation Flow**
+# 🤖 Simple AI Contract Deployment with UmiAgentKit
+
+Deploy your Move contracts using AI chat interface.
+
+## 📦 Install
+
+```bash
+npm install umi-agent-kit
+```
+
+## 🚀 Basic Setup
+
+```javascript
+import { UmiAgentKit } from 'umi-agent-kit';
+
+// Initialize
+const kit = new UmiAgentKit({ network: 'devnet' });
+
+// Enable AI
+kit.enableAI({
+  groqApiKey: 'your-groq-api-key'
+});
+
+// Import wallet
+const wallet = kit.importWallet(process.env.PRIVATE_KEY);
+```
+
+## 💬 Deploy with AI Chat
+
+```javascript
+// Simply chat to deploy contracts
+await kit.chat("the default one");
+// ✅ Deploys all contracts from your folder
+
+await kit.chat("deploy my contracts");
+// ✅ Scans folder and deploys everything
+
+await kit.chat("deploy from ./my-contracts folder");
+// ✅ Deploys from specific folder path
+
+await kit.chat("create a gaming token");
+// ✅ Creates and deploys a game token
+```
+
+## 📁 Folder Structure
 
 ```
-👤 User: "I want to create a blockchain game. Help me set everything up."
-
-🤖 AI: "Exciting! Let's build your blockchain game step by step. I'll help you create:
-       1. A gaming studio multisig for your team
-       2. Game tokens for your economy  
-       3. Hero and item NFT collections
-       
-       First, what's your game studio name and how many team members?"
-
-👤 User: "DragonForge Studios with 5 people"
-
-🤖 AI: "Perfect! Creating DragonForge Studios with 5 team members..."
-       ⚡ Executing: create_gaming_studio
-       ✅ Gaming studio created with CEO, Lead Developer, Artist, Designer, Marketing roles
-       🔐 Multisig requires 3/5 approvals for major decisions
-       
-       "Your studio is ready! Next, let's create your game token. What should it be called?"
-
-👤 User: "DragonCoin for our in-game currency"
-
-🤖 AI: "Creating DragonCoin token for DragonForge Studios..."
-       ⚡ Executing: create_erc20_token  
-       ✅ Token "DragonCoin" (DRAGON) deployed successfully!
-       📄 Contract: 0xabc123...
-       
-       "Excellent! Now let's create NFT collections for your game assets."
+your-project/
+├── contracts/
+│   ├── GameToken.move
+│   ├── HeroNFT.move
+│   └── Tournament.move
+└── index.js
 ```
+
+## 🎯 Simple Example
+
+```javascript
+import { UmiAgentKit } from 'umi-agent-kit';
+
+async function main() {
+  // Setup
+  const kit = new UmiAgentKit({ network: 'devnet' });
+  kit.enableAI({ groqApiKey: 'your-groq-key' });
+  const wallet = kit.importWallet('your-private-key');
+  
+  // Deploy contracts with AI
+  const result = await kit.chat("deploy my gaming contracts");
+  
+  console.log("Deployed contracts:", result);
+}
+
+main();
+```
+
+## 🎮 What You Can Say
+
+### Deploy Commands
+- `"deploy my contracts"`
+- `"the default one"`
+- `"deploy contracts from ./my-contracts folder"`
+- `"deploy from test-contracts directory"`
+- `"create a gaming token"`
+- `"make an NFT collection"`
+
+### Check Status
+- `"check my balance"`
+- `"show my contracts"`
+- `"what network am I on?"`
+
+### Interact with Contracts
+- `"send 100 tokens to player1"`
+- `"mint a hero NFT"`
+- `"start tournament"`
+
+## 🎮 Real AI Interaction Example
+
+Based on actual UmiAgentKit deployment:
+
+```
+👤 User: "the default one"
+
+🧠 AI: Analyzing your request...
+🔍 AI: Found contracts folder: test-contracts
+📁 AI: Scanning contracts: counter, GameToken, HeroNFT
+🔄 AI: Resolving dependencies: counter → GameToken → HeroNFT
+
+🚀 AI: Deploying counter contract...
+📦 AI: Creating Move contract at address 0xeD328deA266f29ddC604679072Ee4f4F23C165f9
+✅ AI: counter deployed! Hash: 0xcf28b0c0c158e24541b6d649c784073c196dbf6a0fa2f977f874788c30df2d07
+📍 AI: Contract address: 0x000000000000000000000000eD328deA266f29ddC604679072Ee4f4F23C165f9::counter_token
+
+🪙 AI: Deploying GameToken contract...
+📦 AI: Creating gaming token with symbol GAME and 8 decimals
+✅ AI: GameToken deployed! Hash: 0x1097eff6d4f472de7a4ea09b58adb9c288b4db066b119d11c1646cdc7e044973
+📍 AI: Contract address: 0x000000000000000000000000eD328deA266f29ddC604679072Ee4f4F23C165f9::gametoken_token
+
+🎨 AI: Deploying HeroNFT contract...
+📦 AI: Creating NFT collection with symbol HERO
+✅ AI: HeroNFT deployed! Hash: 0x6e7a465c1916b1318b2c814b4bd26e243546d663b22f995c69ee66d47ec92139
+📍 AI: Contract address: 0x000000000000000000000000eD328deA266f29ddC604679072Ee4f4F23C165f9::heronft_token
+
+🎉 AI: All contracts deployed successfully!
+📊 AI: Summary: 3 Move contracts deployed to Umi Network
+💡 AI: Next step: Use setConstructorValues() to initialize your contracts
+✅ AI: Your gaming ecosystem is ready to use!
+```
+
+## 💡 Pro Tip: Specify Contract Location
+
+You can tell the AI exactly where your contracts are:
+
+```javascript
+// Deploy from specific folders
+await kit.chat("deploy contracts from ./game-contracts folder");
+await kit.chat("deploy from test-contracts directory");
+await kit.chat("use contracts in ./src/move-contracts/");
+
+// Or just use default (scans current directory)
+await kit.chat("deploy my contracts");
+```
+
+## ✨ That's It!
+
+Just talk to your blockchain and UmiAgentKit handles the rest. No complex APIs needed.
+
+```javascript
+// This simple chat deploys everything
+await kit.chat("deploy my gaming ecosystem");
+```
+
 
 ### **🔐 Multisig Workflow**
 
