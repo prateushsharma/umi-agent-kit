@@ -489,7 +489,180 @@ const moveNFT = await kit.mintMoveNFT({
   rarity: 'legendary'
 });
 ```
+## 🎯 **ERC1155 Multi-Token System**
 
+### **🎮 Advanced Multi-Token Standard**
+
+UmiAgentKit now includes complete ERC1155 support - the ultimate standard for gaming and multi-token applications. Create collections that mix fungible tokens, semi-fungible items, and unique NFTs all in one contract.
+
+#### **🔥 ERC1155 Features:**
+- **Multi-Token Collections** - Single contract, multiple token types
+- **Mixed Fungibility** - Combine currencies, items, and unique NFTs
+- **Batch Operations** - Mint, transfer, and burn multiple tokens efficiently
+- **Gas Optimized** - Massive gas savings compared to multiple ERC-20/721 contracts
+- **Gaming Ready** - Perfect for weapons, armor, consumables, and currencies
+- **Marketplace Compatible** - Full OpenSea and marketplace support
+
+### **💰 ERC1155 Functions**
+
+#### **`kit.createERC1155Collection(params)`**
+Create a new ERC1155 multi-token collection.
+
+```javascript
+const collection = await kit.createERC1155Collection({
+  deployerWallet: wallet,
+  name: "Epic Game Items",
+  symbol: "EGI",
+  baseURI: "https://api.epicgame.com/metadata/",
+  owner: wallet.getAddress()
+});
+
+console.log(`Collection deployed: ${collection.contractAddress}`);
+```
+
+#### **`kit.createERC1155Token(params)`**
+Create a new token type within an existing collection.
+
+```javascript
+// Create a weapon token (semi-fungible)
+const weaponToken = await kit.createERC1155Token({
+  ownerWallet: wallet,
+  contractAddress: collection.contractAddress,
+  metadataURI: "https://api.epicgame.com/metadata/sword.json",
+  maxSupply: 1000,
+  mintPrice: "0.01"  // 0.01 ETH per token
+});
+
+console.log(`Weapon token created with ID: ${weaponToken.tokenId}`);
+```
+
+#### **`kit.mintERC1155Token(params)`**
+Mint specific amounts of a token type.
+
+```javascript
+// Mint 10 swords to a player
+await kit.mintERC1155Token({
+  ownerWallet: wallet,
+  contractAddress: collection.contractAddress,
+  to: playerAddress,
+  tokenId: weaponToken.tokenId,
+  amount: 10,
+  paymentRequired: true  // Player pays mint price
+});
+```
+
+#### **`kit.batchMintERC1155(params)`**
+Mint multiple different token types in one transaction.
+
+```javascript
+// Mint starter pack: 1 sword, 1 shield, 100 gold coins
+await kit.batchMintERC1155({
+  ownerWallet: wallet,
+  contractAddress: collection.contractAddress,
+  to: newPlayerAddress,
+  tokenIds: [swordTokenId, shieldTokenId, goldTokenId],
+  amounts: [1, 1, 100],
+  paymentRequired: true
+});
+```
+
+#### **`kit.transferERC1155(params)`**
+Transfer tokens between addresses.
+
+```javascript
+// Transfer 5 health potions to another player
+await kit.transferERC1155({
+  fromWallet: playerWallet,
+  contractAddress: collection.contractAddress,
+  to: anotherPlayerAddress,
+  tokenId: healthPotionTokenId,
+  amount: 5
+});
+```
+
+#### **`kit.batchTransferERC1155(params)`**
+Transfer multiple token types in one transaction.
+
+```javascript
+// Trade: Give 3 swords and 50 gold for rare armor
+await kit.batchTransferERC1155({
+  fromWallet: playerWallet,
+  contractAddress: collection.contractAddress,
+  to: traderAddress,
+  tokenIds: [swordTokenId, goldTokenId],
+  amounts: [3, 50]
+});
+```
+
+#### **`kit.getERC1155Balance(params)`**
+Check token balance for an address.
+
+```javascript
+// Check how many swords a player owns
+const balance = await kit.getERC1155Balance({
+  contractAddress: collection.contractAddress,
+  address: playerAddress,
+  tokenId: swordTokenId
+});
+
+console.log(`Player owns ${balance} swords`);
+```
+
+#### **`kit.getERC1155BatchBalances(params)`**
+Check multiple token balances at once.
+
+```javascript
+// Check player's inventory
+const balances = await kit.getERC1155BatchBalances({
+  contractAddress: collection.contractAddress,
+  addresses: [playerAddress, playerAddress, playerAddress],
+  tokenIds: [swordTokenId, shieldTokenId, goldTokenId]
+});
+
+console.log(`Inventory: ${balances[0]} swords, ${balances[1]} shields, ${balances[2]} gold`);
+```
+
+### **🎮 Gaming Use Cases**
+
+#### **Perfect for Game Economies:**
+```javascript
+// Create a complete game economy in one contract
+const gameEconomy = await kit.createERC1155Collection({
+  deployerWallet: studioWallet,
+  name: "DragonRealm Economy",
+  symbol: "DRE",
+  baseURI: "https://api.dragonrealm.com/items/"
+});
+
+// Create different token types
+await kit.createERC1155Token({ /* Gold coins - fungible */ });
+await kit.createERC1155Token({ /* Health potions - semi-fungible */ });
+await kit.createERC1155Token({ /* Common weapons - semi-fungible */ });
+await kit.createERC1155Token({ /* Legendary items - limited supply */ });
+```
+
+#### **Efficient Batch Operations:**
+```javascript
+// Player purchases starter pack
+await kit.batchMintERC1155({
+  contractAddress: gameEconomy.contractAddress,
+  to: newPlayerAddress,
+  tokenIds: [goldId, swordId, potionId, armorId],
+  amounts: [1000, 1, 5, 1]  // 1000 gold, 1 sword, 5 potions, 1 armor
+});
+```
+
+### **🚀 AI Integration**
+
+Your AI assistant now understands ERC1155 operations:
+
+```javascript
+// Natural language ERC1155 commands
+await kit.chat("Create a multi-token collection for my RPG game");
+await kit.chat("Add weapon tokens, armor tokens, and gold coins to the collection");
+await kit.chat("Mint starter packs with sword, shield, and 100 gold for new players");
+await kit.chat("Check player inventory for all token types");
+```
 ### **🔐 Multisig Functions**
 
 #### **`kit.registerMultisigWallets(wallets)`**
