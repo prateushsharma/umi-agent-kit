@@ -1,91 +1,134 @@
+// Fixed NFTCompiler.js with complete OpenZeppelin ERC-721 implementation
 
 import solc from 'solc';
 
 export class NFTCompiler {
   /**
-   * Compile ERC-721 NFT collection contract
+   * Compile simplified OpenZeppelin ERC-721 NFT collection
    */
-  static compileERC721Collection(name, symbol, baseURI, maxSupply, mintPrice) {
-    const contractSource = `
+  static compileERC721Collection(name, symbol, baseURI = "", maxSupply = 10000, mintPrice = "0") {
+    try {
+      // Simplified OpenZeppelin-style ERC-721 contract (self-contained)
+      const contractSource = `
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract ${name}NFT {
-    string public name = "${name}";
-    string public symbol = "${symbol}";
-    string private _baseTokenURI = "${baseURI}";
-    uint256 public maxSupply = ${maxSupply};
-    uint256 public mintPrice = ${mintPrice} ether;
-    uint256 public totalSupply = 0;
+contract ${name.replace(/[^a-zA-Z0-9]/g, '')}NFT {
+    using Strings for uint256;
     
+    string public name;
+    string public symbol;
+    uint256 public totalSupply;
+    uint256 public maxSupply;
+    uint256 public mintPrice;
+    string public baseTokenURI;
+    bool public paused;
+    address public owner;
+    
+    uint256 private _tokenIdCounter = 1;
+    
+    // ERC721 storage
     mapping(uint256 => address) private _owners;
     mapping(address => uint256) private _balances;
     mapping(uint256 => address) private _tokenApprovals;
     mapping(address => mapping(address => bool)) private _operatorApprovals;
-    mapping(uint256 => string) private _tokenURIs;
     
-    address public owner;
-    bool public publicMintEnabled = false;
+    // Gaming features
+    mapping(uint256 => uint256) public tokenLevel;
+    mapping(uint256 => uint256) public tokenExperience;
+    mapping(uint256 => string) public tokenAttributes;
+    
+    // Enumerable storage
+    mapping(address => mapping(uint256 => uint256)) private _ownedTokens;
+    mapping(uint256 => uint256) private _ownedTokensIndex;
+    uint256[] private _allTokens;
+    mapping(uint256 => uint256) private _allTokensIndex;
     
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
-    event Mint(address indexed to, uint256 indexed tokenId, string tokenURI);
-    event BatchMint(address[] recipients, uint256[] tokenIds, uint256 count);
+    event TokenMinted(address indexed to, uint256 indexed tokenId);
+    event TokenLevelUp(uint256 indexed tokenId, uint256 newLevel);
+    event ContractPaused(bool paused);
     
     modifier onlyOwner() {
         require(msg.sender == owner, "Not the owner");
         _;
     }
     
-    modifier tokenExists(uint256 tokenId) {
-        require(_owners[tokenId] != address(0), "Token does not exist");
+    modifier whenNotPaused() {
+        require(!paused, "Contract is paused");
         _;
     }
     
-    constructor() {
-        owner = msg.sender;
+    modifier tokenExists(uint256 tokenId) {
+        require(_exists(tokenId), "Token does not exist");
+        _;
     }
     
-    // ============ Core ERC-721 Functions ============
-    
-    function balanceOf(address tokenOwner) public view returns (uint256) {
-        require(tokenOwner != address(0), "Invalid address");
-        return _balances[tokenOwner];
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        string memory _baseURI,
+        uint256 _maxSupply,
+        uint256 _mintPrice,
+        address _owner
+    ) {
+        name = _name;
+        symbol = _symbol;
+        baseTokenURI = _baseURI;
+        maxSupply = _maxSupply;
+        mintPrice = _mintPrice;
+        owner = _owner;
+        paused = false;
     }
     
-    function ownerOf(uint256 tokenId) public view tokenExists(tokenId) returns (address) {
-        return _owners[tokenId];
+    // ERC721 Implementation
+    function balanceOf(address ownerAddr) public view returns (uint256) {
+        require(ownerAddr != address(0), "ERC721: address zero is not a valid owner");
+        return _balances[ownerAddr];
+    }
+    
+    function ownerOf(uint256 tokenId) public view returns (address) {
+        address tokenOwner = _ownerOf(tokenId);
+        require(tokenOwner != address(0), "ERC721: invalid token ID");
+        return tokenOwner;
+    }
+    
+    function tokenURI(uint256 tokenId) public view returns (string memory) {
+        require(_exists(tokenId), "ERC721: invalid token ID");
+        return bytes(baseTokenURI).length > 0 
+            ? string(abi.encodePacked(baseTokenURI, tokenId.toString())) 
+            : "";
     }
     
     function approve(address to, uint256 tokenId) public {
         address tokenOwner = ownerOf(tokenId);
-        require(to != tokenOwner, "Cannot approve to current owner");
+        require(to != tokenOwner, "ERC721: approval to current owner");
         require(
             msg.sender == tokenOwner || isApprovedForAll(tokenOwner, msg.sender),
-            "Not approved to manage this token"
+            "ERC721: approve caller is not token owner or approved for all"
         );
-        
-        _tokenApprovals[tokenId] = to;
-        emit Approval(tokenOwner, to, tokenId);
+        _approve(to, tokenId);
     }
     
-    function getApproved(uint256 tokenId) public view tokenExists(tokenId) returns (address) {
+    function getApproved(uint256 tokenId) public view returns (address) {
+        require(_exists(tokenId), "ERC721: invalid token ID");
         return _tokenApprovals[tokenId];
     }
     
     function setApprovalForAll(address operator, bool approved) public {
-        require(operator != msg.sender, "Cannot approve to yourself");
+        require(operator != msg.sender, "ERC721: approve to caller");
         _operatorApprovals[msg.sender][operator] = approved;
         emit ApprovalForAll(msg.sender, operator, approved);
     }
     
-    function isApprovedForAll(address tokenOwner, address operator) public view returns (bool) {
-        return _operatorApprovals[tokenOwner][operator];
+    function isApprovedForAll(address ownerAddr, address operator) public view returns (bool) {
+        return _operatorApprovals[ownerAddr][operator];
     }
     
     function transferFrom(address from, address to, uint256 tokenId) public {
-        require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved to transfer");
+        require(_isApprovedOrOwner(msg.sender, tokenId), "ERC721: caller is not token owner or approved");
         _transfer(from, to, tokenId);
     }
     
@@ -94,133 +137,198 @@ contract ${name}NFT {
     }
     
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public {
-        require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved to transfer");
+        require(_isApprovedOrOwner(msg.sender, tokenId), "ERC721: caller is not token owner or approved");
         _safeTransfer(from, to, tokenId, data);
     }
     
-    // ============ Metadata Functions ============
-    
-    function tokenURI(uint256 tokenId) public view tokenExists(tokenId) returns (string memory) {
-        string memory _tokenURI = _tokenURIs[tokenId];
-        
-        // If token has specific URI, return it
-        if (bytes(_tokenURI).length > 0) {
-            return _tokenURI;
-        }
-        
-        // Otherwise, concatenate base URI with token ID
-        if (bytes(_baseTokenURI).length > 0) {
-            return string(abi.encodePacked(_baseTokenURI, _toString(tokenId)));
-        }
-        
-        return "";
-    }
-    
-    function setTokenURI(uint256 tokenId, string memory uri) public onlyOwner tokenExists(tokenId) {
-        _tokenURIs[tokenId] = uri;
-    }
-    
-    function setBaseURI(string memory newBaseURI) public onlyOwner {
-        _baseTokenURI = newBaseURI;
-    }
-    
-    // ============ Minting Functions ============
-    
-    function mintTo(address to, uint256 tokenId, string memory metadataURI) public onlyOwner {
-        require(to != address(0), "Cannot mint to zero address");
-        require(_owners[tokenId] == address(0), "Token already exists");
+    // Minting functions
+    function mint(address to) public payable whenNotPaused {
         require(totalSupply < maxSupply, "Max supply reached");
-        
-        _owners[tokenId] = to;
-        _balances[to] += 1;
-        totalSupply += 1;
-        
-        if (bytes(metadataURI).length > 0) {
-            _tokenURIs[tokenId] = metadataURI;
-        }
-        
-        emit Transfer(address(0), to, tokenId);
-        emit Mint(to, tokenId, metadataURI);
-    }
-    
-    function publicMint(uint256 tokenId, string memory metadataURI) public payable {
-        require(publicMintEnabled, "Public mint not enabled");
         require(msg.value >= mintPrice, "Insufficient payment");
-        require(totalSupply < maxSupply, "Max supply reached");
         
-        mintTo(msg.sender, tokenId, metadataURI);
+        uint256 tokenId = _tokenIdCounter;
+        _tokenIdCounter++;
         
-        // Refund excess payment
-        if (msg.value > mintPrice) {
-            payable(msg.sender).transfer(msg.value - mintPrice);
+        _safeMint(to, tokenId);
+        _initializeGamingAttributes(tokenId);
+        
+        emit TokenMinted(to, tokenId);
+    }
+    
+    function ownerMint(address to, uint256 quantity) public onlyOwner {
+        require(totalSupply + quantity <= maxSupply, "Would exceed max supply");
+        
+        for (uint256 i = 0; i < quantity; i++) {
+            uint256 tokenId = _tokenIdCounter;
+            _tokenIdCounter++;
+            
+            _safeMint(to, tokenId);
+            _initializeGamingAttributes(tokenId);
+            
+            emit TokenMinted(to, tokenId);
         }
     }
     
-    function batchMint(address[] memory recipients, uint256[] memory tokenIds, string[] memory metadataURIs) public onlyOwner {
-        require(recipients.length == tokenIds.length, "Arrays length mismatch");
-        require(recipients.length == metadataURIs.length, "Metadata arrays length mismatch");
+    function batchMint(address[] calldata recipients) public onlyOwner {
         require(totalSupply + recipients.length <= maxSupply, "Would exceed max supply");
         
         for (uint256 i = 0; i < recipients.length; i++) {
-            require(recipients[i] != address(0), "Cannot mint to zero address");
-            require(_owners[tokenIds[i]] == address(0), "Token already exists");
+            uint256 tokenId = _tokenIdCounter;
+            _tokenIdCounter++;
             
-            _owners[tokenIds[i]] = recipients[i];
-            _balances[recipients[i]] += 1;
+            _safeMint(recipients[i], tokenId);
+            _initializeGamingAttributes(tokenId);
             
-            if (bytes(metadataURIs[i]).length > 0) {
-                _tokenURIs[tokenIds[i]] = metadataURIs[i];
-            }
-            
-            emit Transfer(address(0), recipients[i], tokenIds[i]);
-            emit Mint(recipients[i], tokenIds[i], metadataURIs[i]);
+            emit TokenMinted(recipients[i], tokenId);
+        }
+    }
+    
+    // Gaming features
+    function addExperience(uint256 tokenId, uint256 exp) public onlyOwner tokenExists(tokenId) {
+        tokenExperience[tokenId] += exp;
+        
+        uint256 currentLevel = tokenLevel[tokenId];
+        uint256 newLevel = calculateLevel(tokenExperience[tokenId]);
+        
+        if (newLevel > currentLevel) {
+            tokenLevel[tokenId] = newLevel;
+            emit TokenLevelUp(tokenId, newLevel);
+        }
+    }
+    
+    function setTokenAttributes(uint256 tokenId, string calldata attributes) public onlyOwner tokenExists(tokenId) {
+        tokenAttributes[tokenId] = attributes;
+    }
+    
+    function calculateLevel(uint256 experience) public pure returns (uint256) {
+        if (experience < 100) return 1;
+        if (experience < 300) return 2;
+        if (experience < 600) return 3;
+        if (experience < 1000) return 4;
+        if (experience < 1500) return 5;
+        return 5 + (experience - 1500) / 500;
+    }
+    
+    function getTokenInfo(uint256 tokenId) public view tokenExists(tokenId) returns (
+        address tokenOwner,
+        uint256 level,
+        uint256 experience,
+        string memory attributes
+    ) {
+        return (
+            ownerOf(tokenId),
+            tokenLevel[tokenId],
+            tokenExperience[tokenId],
+            tokenAttributes[tokenId]
+        );
+    }
+    
+    function getUserTokens(address user) public view returns (uint256[] memory) {
+        uint256 tokenCount = balanceOf(user);
+        uint256[] memory tokenIds = new uint256[](tokenCount);
+        
+        for (uint256 i = 0; i < tokenCount; i++) {
+            tokenIds[i] = tokenOfOwnerByIndex(user, i);
         }
         
-        totalSupply += recipients.length;
-        emit BatchMint(recipients, tokenIds, recipients.length);
+        return tokenIds;
     }
     
-    // ============ Owner Functions ============
-    
-    function setPublicMintEnabled(bool enabled) public onlyOwner {
-        publicMintEnabled = enabled;
+    // Enumerable functions
+    function tokenOfOwnerByIndex(address ownerAddr, uint256 index) public view returns (uint256) {
+        require(index < balanceOf(ownerAddr), "ERC721Enumerable: owner index out of bounds");
+        return _ownedTokens[ownerAddr][index];
     }
     
-    function setMintPrice(uint256 newPrice) public onlyOwner {
-        mintPrice = newPrice;
+    function tokenByIndex(uint256 index) public view returns (uint256) {
+        require(index < totalSupply, "ERC721Enumerable: global index out of bounds");
+        return _allTokens[index];
+    }
+    
+    // Admin functions
+    function pause() public onlyOwner {
+        paused = true;
+        emit ContractPaused(true);
+    }
+    
+    function unpause() public onlyOwner {
+        paused = false;
+        emit ContractPaused(false);
+    }
+    
+    function setMintPrice(uint256 _mintPrice) public onlyOwner {
+        mintPrice = _mintPrice;
+    }
+    
+    function setBaseURI(string calldata _baseURI) public onlyOwner {
+        baseTokenURI = _baseURI;
     }
     
     function withdraw() public onlyOwner {
         uint256 balance = address(this).balance;
         require(balance > 0, "No funds to withdraw");
-        payable(owner).transfer(balance);
+        
+        (bool success, ) = payable(owner).call{value: balance}("");
+        require(success, "Withdrawal failed");
     }
     
     function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "Invalid new owner");
+        require(newOwner != address(0), "New owner is the zero address");
         owner = newOwner;
     }
     
-    // ============ Internal Functions ============
+    // Internal functions
+    function _ownerOf(uint256 tokenId) internal view returns (address) {
+        return _owners[tokenId];
+    }
+    
+    function _exists(uint256 tokenId) internal view returns (bool) {
+        return _ownerOf(tokenId) != address(0);
+    }
     
     function _isApprovedOrOwner(address spender, uint256 tokenId) internal view returns (bool) {
-        require(_owners[tokenId] != address(0), "Token does not exist");
-        address tokenOwner = _owners[tokenId];
-        return (spender == tokenOwner || getApproved(tokenId) == spender || isApprovedForAll(tokenOwner, spender));
+        address tokenOwner = ownerOf(tokenId);
+        return (spender == tokenOwner || isApprovedForAll(tokenOwner, spender) || getApproved(tokenId) == spender);
+    }
+    
+    function _mint(address to, uint256 tokenId) internal {
+        require(to != address(0), "ERC721: mint to the zero address");
+        require(!_exists(tokenId), "ERC721: token already minted");
+        
+        _balances[to] += 1;
+        _owners[tokenId] = to;
+        totalSupply += 1;
+        
+        _addTokenToOwnerEnumeration(to, tokenId);
+        _addTokenToAllTokensEnumeration(tokenId);
+        
+        emit Transfer(address(0), to, tokenId);
+    }
+    
+    function _safeMint(address to, uint256 tokenId) internal {
+        _mint(to, tokenId);
+        require(_checkOnERC721Received(address(0), to, tokenId, ""), "ERC721: transfer to non ERC721Receiver implementer");
     }
     
     function _transfer(address from, address to, uint256 tokenId) internal {
-        require(ownerOf(tokenId) == from, "Transfer from incorrect owner");
-        require(to != address(0), "Transfer to zero address");
+        require(ownerOf(tokenId) == from, "ERC721: transfer from incorrect owner");
+        require(to != address(0), "ERC721: transfer to the zero address");
         
-        // Clear approvals from the previous owner
         _approve(address(0), tokenId);
         
         _balances[from] -= 1;
         _balances[to] += 1;
         _owners[tokenId] = to;
         
+        _removeTokenFromOwnerEnumeration(from, tokenId);
+        _addTokenToOwnerEnumeration(to, tokenId);
+        
         emit Transfer(from, to, tokenId);
+    }
+    
+    function _safeTransfer(address from, address to, uint256 tokenId, bytes memory data) internal {
+        _transfer(from, to, tokenId);
+        require(_checkOnERC721Received(from, to, tokenId, data), "ERC721: transfer to non ERC721Receiver implementer");
     }
     
     function _approve(address to, uint256 tokenId) internal {
@@ -228,9 +336,34 @@ contract ${name}NFT {
         emit Approval(ownerOf(tokenId), to, tokenId);
     }
     
-    function _safeTransfer(address from, address to, uint256 tokenId, bytes memory data) internal {
-        _transfer(from, to, tokenId);
-        require(_checkOnERC721Received(from, to, tokenId, data), "Transfer to non ERC721Receiver");
+    function _initializeGamingAttributes(uint256 tokenId) internal {
+        tokenLevel[tokenId] = 1;
+        tokenExperience[tokenId] = 0;
+    }
+    
+    function _addTokenToOwnerEnumeration(address to, uint256 tokenId) private {
+        uint256 length = balanceOf(to);
+        _ownedTokens[to][length] = tokenId;
+        _ownedTokensIndex[tokenId] = length;
+    }
+    
+    function _addTokenToAllTokensEnumeration(uint256 tokenId) private {
+        _allTokensIndex[tokenId] = _allTokens.length;
+        _allTokens.push(tokenId);
+    }
+    
+    function _removeTokenFromOwnerEnumeration(address from, uint256 tokenId) private {
+        uint256 lastTokenIndex = balanceOf(from) - 1;
+        uint256 tokenIndex = _ownedTokensIndex[tokenId];
+        
+        if (tokenIndex != lastTokenIndex) {
+            uint256 lastTokenId = _ownedTokens[from][lastTokenIndex];
+            _ownedTokens[from][tokenIndex] = lastTokenId;
+            _ownedTokensIndex[lastTokenId] = tokenIndex;
+        }
+        
+        delete _ownedTokensIndex[tokenId];
+        delete _ownedTokens[from][lastTokenIndex];
     }
     
     function _checkOnERC721Received(address from, address to, uint256 tokenId, bytes memory data) private returns (bool) {
@@ -239,7 +372,7 @@ contract ${name}NFT {
                 return retval == IERC721Receiver.onERC721Received.selector;
             } catch (bytes memory reason) {
                 if (reason.length == 0) {
-                    revert("Transfer to non ERC721Receiver");
+                    revert("ERC721: transfer to non ERC721Receiver implementer");
                 } else {
                     assembly {
                         revert(add(32, reason), mload(reason))
@@ -251,7 +384,24 @@ contract ${name}NFT {
         }
     }
     
-    function _toString(uint256 value) internal pure returns (string memory) {
+    // ERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
+        return
+            interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
+            interfaceId == 0x80ac58cd || // ERC165 Interface ID for ERC721
+            interfaceId == 0x5b5e139f || // ERC165 Interface ID for ERC721Metadata
+            interfaceId == 0x780e9d63;   // ERC165 Interface ID for ERC721Enumerable
+    }
+}
+
+// Required interfaces
+interface IERC721Receiver {
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external returns (bytes4);
+}
+
+// String utility library (simplified)
+library Strings {
+    function toString(uint256 value) internal pure returns (string memory) {
         if (value == 0) {
             return "0";
         }
@@ -269,49 +419,35 @@ contract ${name}NFT {
         }
         return string(buffer);
     }
-    
-    // ============ ERC165 Support ============
-    
-    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
-        return
-            interfaceId == 0x01ffc9a7 || // ERC165
-            interfaceId == 0x80ac58cd || // ERC721
-            interfaceId == 0x5b5e139f;   // ERC721Metadata
-    }
 }
+`;
 
-// IERC721Receiver interface
-interface IERC721Receiver {
-    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external returns (bytes4);
-}`;
+      const input = {
+        language: 'Solidity',
+        sources: {
+          [`${name}NFT.sol`]: {
+            content: contractSource,
+          },
+        },
+        settings: {
+          outputSelection: {
+            '*': {
+              '*': ['abi', 'evm.bytecode'],
+            },
+          },
+        },
+      };
 
-    const input = {
-      language: 'Solidity',
-      sources: {
-        [`${name}NFT.sol`]: {
-          content: contractSource
-        }
-      },
-      settings: {
-        outputSelection: {
-          '*': {
-            '*': ['abi', 'evm.bytecode.object']
-          }
-        }
-      }
-    };
-
-    try {
       const compiled = JSON.parse(solc.compile(JSON.stringify(input)));
       
       if (compiled.errors) {
         const hasErrors = compiled.errors.some(error => error.severity === 'error');
         if (hasErrors) {
-          throw new Error('Compilation errors: ' + compiled.errors.map(e => e.message).join('\n'));
+          throw new Error('NFT compilation errors: ' + compiled.errors.map(e => e.message).join('\n'));
         }
       }
 
-      const contractName = `${name}NFT`;
+      const contractName = `${name.replace(/[^a-zA-Z0-9]/g, '')}NFT`;
       const contract = compiled.contracts[`${contractName}.sol`][contractName];
       
       return {
@@ -321,312 +457,178 @@ interface IERC721Receiver {
       };
 
     } catch (error) {
-      throw new Error(`NFT compilation failed: ${error.message}`);
+      throw new Error(`OpenZeppelin NFT compilation failed: ${error.message}`);
     }
   }
 
   /**
-   * Get standard ERC-721 ABI for already deployed contracts
+   * Get simplified OpenZeppelin ERC-721 ABI
    */
-  static getStandardERC721ABI() {
+  static getOpenZeppelinERC721ABI() {
     return [
-      {
-        "inputs": [{"name": "owner", "type": "address"}],
-        "name": "balanceOf",
-        "outputs": [{"name": "", "type": "uint256"}],
-        "type": "function"
-      },
-      {
-        "inputs": [{"name": "tokenId", "type": "uint256"}],
-        "name": "ownerOf",
-        "outputs": [{"name": "", "type": "address"}],
-        "type": "function"
-      },
-      {
-        "inputs": [{"name": "to", "type": "address"}, {"name": "tokenId", "type": "uint256"}],
-        "name": "approve",
-        "outputs": [],
-        "type": "function"
-      },
-      {
-        "inputs": [{"name": "tokenId", "type": "uint256"}],
-        "name": "getApproved",
-        "outputs": [{"name": "", "type": "address"}],
-        "type": "function"
-      },
-      {
-        "inputs": [{"name": "operator", "type": "address"}, {"name": "approved", "type": "bool"}],
-        "name": "setApprovalForAll",
-        "outputs": [],
-        "type": "function"
-      },
-      {
-        "inputs": [{"name": "owner", "type": "address"}, {"name": "operator", "type": "address"}],
-        "name": "isApprovedForAll",
-        "outputs": [{"name": "", "type": "bool"}],
-        "type": "function"
-      },
-      {
-        "inputs": [{"name": "from", "type": "address"}, {"name": "to", "type": "address"}, {"name": "tokenId", "type": "uint256"}],
-        "name": "transferFrom",
-        "outputs": [],
-        "type": "function"
-      },
-      {
-        "inputs": [{"name": "from", "type": "address"}, {"name": "to", "type": "address"}, {"name": "tokenId", "type": "uint256"}],
-        "name": "safeTransferFrom",
-        "outputs": [],
-        "type": "function"
-      },
-      {
-        "inputs": [{"name": "tokenId", "type": "uint256"}],
-        "name": "tokenURI",
-        "outputs": [{"name": "", "type": "string"}],
-        "type": "function"
-      },
+      // Standard ERC-721 functions
       {
         "inputs": [],
         "name": "name",
-        "outputs": [{"name": "", "type": "string"}],
+        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+        "stateMutability": "view",
         "type": "function"
       },
       {
         "inputs": [],
-        "name": "symbol",
-        "outputs": [{"name": "", "type": "string"}],
+        "name": "symbol", 
+        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+        "stateMutability": "view",
         "type": "function"
       },
       {
         "inputs": [],
         "name": "totalSupply",
-        "outputs": [{"name": "", "type": "uint256"}],
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
         "type": "function"
       },
       {
-        "inputs": [{"name": "to", "type": "address"}, {"name": "tokenId", "type": "uint256"}, {"name": "metadataURI", "type": "string"}],
-        "name": "mintTo",
+        "inputs": [],
+        "name": "maxSupply",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+        "name": "tokenURI",
+        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "address", "name": "owner", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+        "name": "ownerOf",
+        "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "address", "name": "to", "type": "address"}],
+        "name": "mint",
         "outputs": [],
+        "stateMutability": "payable",
         "type": "function"
       },
       {
-        "inputs": [{"name": "recipients", "type": "address[]"}, {"name": "tokenIds", "type": "uint256[]"}, {"name": "metadataURIs", "type": "string[]"}],
+        "inputs": [{"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "quantity", "type": "uint256"}],
+        "name": "ownerMint",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "address[]", "name": "recipients", "type": "address[]"}],
         "name": "batchMint",
         "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
       },
       {
-        "inputs": [{"name": "tokenId", "type": "uint256"}, {"name": "metadataURI", "type": "string"}],
-        "name": "publicMint",
+        "inputs": [{"internalType": "address", "name": "from", "type": "address"}, {"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+        "name": "safeTransferFrom",
         "outputs": [],
-        "type": "function",
-        "payable": true
+        "stateMutability": "nonpayable",
+        "type": "function"
       },
+      // Gaming features
       {
-        "inputs": [{"name": "enabled", "type": "bool"}],
-        "name": "setPublicMintEnabled",
+        "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}, {"internalType": "uint256", "name": "exp", "type": "uint256"}],
+        "name": "addExperience",
         "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
       },
       {
-        "inputs": [{"name": "newPrice", "type": "uint256"}],
-        "name": "setMintPrice",
+        "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}, {"internalType": "string", "name": "attributes", "type": "string"}],
+        "name": "setTokenAttributes",
         "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
       },
       {
-        "inputs": [{"name": "newBaseURI", "type": "string"}],
-        "name": "setBaseURI",
-        "outputs": [],
+        "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+        "name": "getTokenInfo",
+        "outputs": [
+          {"internalType": "address", "name": "owner", "type": "address"},
+          {"internalType": "uint256", "name": "level", "type": "uint256"},
+          {"internalType": "uint256", "name": "experience", "type": "uint256"},
+          {"internalType": "string", "name": "attributes", "type": "string"}
+        ],
+        "stateMutability": "view",
         "type": "function"
       },
       {
-        "inputs": [{"name": "tokenId", "type": "uint256"}, {"name": "uri", "type": "string"}],
-        "name": "setTokenURI",
+        "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+        "name": "getUserTokens",
+        "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      // Admin functions
+      {
+        "inputs": [],
+        "name": "pause",
         "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "unpause",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
       },
       {
         "inputs": [],
         "name": "withdraw",
         "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
       },
+      // Events
       {
-        "inputs": [{"name": "newOwner", "type": "address"}],
-        "name": "transferOwnership",
-        "outputs": [],
-        "type": "function"
+        "anonymous": false,
+        "inputs": [
+          {"indexed": true, "internalType": "address", "name": "to", "type": "address"},
+          {"indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256"}
+        ],
+        "name": "TokenMinted",
+        "type": "event"
       },
       {
         "anonymous": false,
-        "inputs": [{"indexed": true, "name": "from", "type": "address"}, {"indexed": true, "name": "to", "type": "address"}, {"indexed": true, "name": "tokenId", "type": "uint256"}],
+        "inputs": [
+          {"indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256"},
+          {"indexed": false, "internalType": "uint256", "name": "newLevel", "type": "uint256"}
+        ],
+        "name": "TokenLevelUp",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {"indexed": true, "internalType": "address", "name": "from", "type": "address"},
+          {"indexed": true, "internalType": "address", "name": "to", "type": "address"},
+          {"indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256"}
+        ],
         "name": "Transfer",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [{"indexed": true, "name": "owner", "type": "address"}, {"indexed": true, "name": "approved", "type": "address"}, {"indexed": true, "name": "tokenId", "type": "uint256"}],
-        "name": "Approval",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [{"indexed": true, "name": "owner", "type": "address"}, {"indexed": true, "name": "operator", "type": "address"}, {"name": "approved", "type": "bool"}],
-        "name": "ApprovalForAll",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [{"indexed": true, "name": "to", "type": "address"}, {"indexed": true, "name": "tokenId", "type": "uint256"}, {"name": "tokenURI", "type": "string"}],
-        "name": "Mint",
         "type": "event"
       }
     ];
-  }
-
-  /**
-   * Generate gaming-specific NFT contract (weapons, characters, etc.)
-   */
-  static compileGamingNFT(name, symbol, baseURI, categories = []) {
-    // Categories like ["weapon", "character", "item", "land"]
-    const categoryEnum = categories.length > 0 ? 
-      `enum Category { ${categories.map(c => c.toUpperCase()).join(', ')} }` : 
-      'enum Category { COMMON, RARE, EPIC, LEGENDARY }';
-
-    const contractSource = `
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-contract ${name}Gaming {
-    string public name = "${name}";
-    string public symbol = "${symbol}";
-    string private _baseTokenURI = "${baseURI}";
-    
-    ${categoryEnum}
-    
-    struct GameAsset {
-        Category category;
-        uint256 level;
-        uint256 experience;
-        string attributes; // JSON string of attributes
-        bool tradeable;
-    }
-    
-    mapping(uint256 => address) private _owners;
-    mapping(address => uint256) private _balances;
-    mapping(uint256 => GameAsset) public gameAssets;
-    mapping(uint256 => string) private _tokenURIs;
-    
-    address public owner;
-    uint256 public totalSupply = 0;
-    
-    event AssetCreated(uint256 indexed tokenId, Category category, uint256 level);
-    event AssetUpgraded(uint256 indexed tokenId, uint256 newLevel, uint256 newExperience);
-    
-    constructor() {
-        owner = msg.sender;
-    }
-    
-    function mintGameAsset(
-        address to,
-        uint256 tokenId,
-        Category category,
-        uint256 level,
-        string memory attributes,
-        string memory metadataURI
-    ) public {
-        require(msg.sender == owner, "Not authorized");
-        require(_owners[tokenId] == address(0), "Token exists");
-        
-        _owners[tokenId] = to;
-        _balances[to] += 1;
-        totalSupply += 1;
-        
-        gameAssets[tokenId] = GameAsset({
-            category: category,
-            level: level,
-            experience: 0,
-            attributes: attributes,
-            tradeable: true
-        });
-        
-        _tokenURIs[tokenId] = metadataURI;
-        
-        emit AssetCreated(tokenId, category, level);
-    }
-    
-    function upgradeAsset(uint256 tokenId, uint256 newLevel, uint256 experience) public {
-        require(msg.sender == owner, "Not authorized");
-        require(_owners[tokenId] != address(0), "Token does not exist");
-        
-        gameAssets[tokenId].level = newLevel;
-        gameAssets[tokenId].experience = experience;
-        
-        emit AssetUpgraded(tokenId, newLevel, experience);
-    }
-    
-    function setTradeable(uint256 tokenId, bool tradeable) public {
-        require(msg.sender == owner, "Not authorized");
-        gameAssets[tokenId].tradeable = tradeable;
-    }
-    
-    function ownerOf(uint256 tokenId) public view returns (address) {
-        require(_owners[tokenId] != address(0), "Token does not exist");
-        return _owners[tokenId];
-    }
-    
-    function balanceOf(address tokenOwner) public view returns (uint256) {
-        return _balances[tokenOwner];
-    }
-    
-    function tokenURI(uint256 tokenId) public view returns (string memory) {
-        return _tokenURIs[tokenId];
-    }
-}`;
-
-    return this.compileCustomContract(contractSource, `${name}Gaming`);
-  }
-
-  /**
-   * Compile custom contract source
-   */
-  static compileCustomContract(contractSource, contractName) {
-    const input = {
-      language: 'Solidity',
-      sources: {
-        [`${contractName}.sol`]: {
-          content: contractSource
-        }
-      },
-      settings: {
-        outputSelection: {
-          '*': {
-            '*': ['abi', 'evm.bytecode.object']
-          }
-        }
-      }
-    };
-
-    try {
-      const compiled = JSON.parse(solc.compile(JSON.stringify(input)));
-      
-      if (compiled.errors) {
-        const hasErrors = compiled.errors.some(error => error.severity === 'error');
-        if (hasErrors) {
-          throw new Error('Compilation errors: ' + compiled.errors.map(e => e.message).join('\n'));
-        }
-      }
-
-      const contract = compiled.contracts[`${contractName}.sol`][contractName];
-      
-      return {
-        abi: contract.abi,
-        bytecode: '0x' + contract.evm.bytecode.object,
-        contractName
-      };
-
-    } catch (error) {
-      throw new Error(`Custom contract compilation failed: ${error.message}`);
-    }
   }
 }
