@@ -1,15 +1,3 @@
-/**
- * File Location: src/UmiAgentKit.js
- * COMPLETE UmiAgentKit.js - Final version with FULL functionality + Multisig + AI
- * 
- * This is the complete UmiAgentKit.js file with:
- * - ALL existing functionality (wallets, transfers, tokens, ERC-721 NFTs, Move NFTs)
- * - ALL gaming features (heroes, weapons, dual-VM, cross-chain)
- * - Complete multisig functionality
- * - Gaming studio and guild treasury management
- * - Proposal and approval workflows
- * - NEW: AI Integration with Groq
- */
 
 import { UmiClient } from './client/UmiClient.js';
 import { WalletManager } from './wallet/WalletManager.js';
@@ -23,6 +11,7 @@ import { parseEther } from 'viem';
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { MultiContractDeployer } from './deployment/MultiContractDeployer.js';
+import { ERC1155Manager } from './erc1155/ERC1155Manager.js';
 
 export class UmiAgentKit {
   constructor(config = {}) {
@@ -64,7 +53,9 @@ export class UmiAgentKit {
     // Add deployment manager
     this.deploymentManager = new MultiContractDeployer(this);
 
-     console.log(`UmiAgentKit initialized on ${this.config.network} with deployment support`);
+    this.erc1155Manager = new ERC1155Manager(this.client, this.client.chain);
+
+     console.log(`UmiAgentKit initialized on ${this.config.network} with Advance Features`);
   }
 
   // ====== NEW: AI INTEGRATION METHODS ======
@@ -2077,6 +2068,231 @@ async validateContracts(contractsPath) {
     throw new Error(`Contract validation failed: ${error.message}`);
   }
 }
+/**
+ * Create ERC1155 multi-token contract using OpenZeppelin
+ */
+async createERC1155Contract(deployerWallet, name, baseURI = "") {
+    if (!deployerWallet) {
+      throw new Error('Deployer wallet is required');
+    }
 
+    const result = await this.erc1155Manager.deployERC1155Contract({
+      deployerPrivateKey: deployerWallet.exportPrivateKey(),
+      name,
+      baseURI
+    });
 
+    // Update AI context if AI is enabled
+    if (this.isAIEnabled()) {
+      this.aiManager.contextManager.updateContractContext('erc1155', result.contractAddress, {
+        name,
+        type: 'ERC1155'
+      });
+    }
+
+    return result;
+  }
+/**
+ * Create ERC1155 token type
+ */
+ async createERC1155Token(ownerWallet, contractAddress, abi, metadataURI, maxSupply, mintPrice = "0") {
+    if (!ownerWallet) {
+      throw new Error('Owner wallet is required');
+    }
+
+    return await this.erc1155Manager.createTokenType({
+      ownerPrivateKey: ownerWallet.exportPrivateKey(),
+      contractAddress,
+      metadataURI,
+      maxSupply,
+      mintPrice
+    });
+  }
+ /**
+   * Admin mint ERC1155 tokens (owner only, no payment)
+   */
+  async adminMintERC1155(ownerWallet, contractAddress, abi, toAddress, tokenId, amount) {
+    if (!ownerWallet) {
+      throw new Error('Owner wallet is required');
+    }
+
+    return await this.erc1155Manager.adminMintERC1155({
+      ownerPrivateKey: ownerWallet.exportPrivateKey(),
+      contractAddress,
+      toAddress,
+      tokenId,
+      amount
+    });
+  }
+/**
+ * Mint ERC1155 tokens to address
+ */
+ async mintERC1155(wallet, contractAddress, abi, toAddress, tokenId, amount, payment = "0") {
+    if (!wallet) {
+      throw new Error('Wallet is required');
+    }
+
+    return await this.erc1155Manager.mintERC1155({
+      fromPrivateKey: wallet.exportPrivateKey(),
+      contractAddress,
+      toAddress,
+      tokenId,
+      amount,
+      payment
+    });
+  }
+/**
+ * Batch mint multiple ERC1155 token types
+ */
+ async batchMintERC1155(wallet, contractAddress, abi, toAddress, tokenIds, amounts, totalPayment = "0") {
+    if (!wallet) {
+      throw new Error('Wallet is required');
+    }
+
+    return await this.erc1155Manager.batchMintERC1155({
+      fromPrivateKey: wallet.exportPrivateKey(),
+      contractAddress,
+      toAddress,
+      tokenIds,
+      amounts,
+      totalPayment
+    });
+  }
+
+/**
+ * Transfer ERC1155 tokens between addresses
+ */
+ async transferERC1155(wallet, contractAddress, abi, toAddress, tokenId, amount) {
+    if (!wallet) {
+      throw new Error('Wallet is required');
+    }
+
+    return await this.erc1155Manager.transferERC1155({
+      fromPrivateKey: wallet.exportPrivateKey(),
+      contractAddress,
+      toAddress,
+      tokenId,
+      amount
+    });
+  }
+
+/**
+ * Batch transfer multiple ERC1155 token types
+ */
+ async batchTransferERC1155(wallet, contractAddress, abi, toAddress, tokenIds, amounts) {
+    if (!wallet) {
+      throw new Error('Wallet is required');
+    }
+
+    return await this.erc1155Manager.batchTransferERC1155({
+      fromPrivateKey: wallet.exportPrivateKey(),
+      contractAddress,
+      toAddress,
+      tokenIds,
+      amounts
+    });
+  }
+
+/**
+ * Get ERC1155 token balance for address
+ */
+async getERC1155Balance(contractAddress, abi, ownerAddress, tokenId) {
+    return await this.erc1155Manager.getERC1155Balance(contractAddress, ownerAddress, tokenId);
+  }
+
+async getERC1155OwnedTokens(contractAddress, abi, ownerAddress) {
+    return await this.erc1155Manager.getOwnedTokens(contractAddress, ownerAddress);
+  }
+/**
+ * Set approval for all ERC1155 tokens
+ */
+async setERC1155ApprovalForAll(wallet, contractAddress, abi, operatorAddress, approved) {
+    if (!wallet) {
+      throw new Error('Wallet is required');
+    }
+
+    return await this.erc1155Manager.setApprovalForAll({
+      ownerPrivateKey: wallet.exportPrivateKey(),
+      contractAddress,
+      operatorAddress,
+      approved
+    });
+  }
+/**
+ * Check if address is approved for all ERC1155 tokens
+ */
+ async isERC1155ApprovedForAll(contractAddress, abi, ownerAddress, operatorAddress) {
+    return await this.erc1155Manager.isApprovedForAll(contractAddress, ownerAddress, operatorAddress);
+  }
+/**
+ * Get ERC1155 token URI/metadata
+ */
+ async getERC1155TokenURI(contractAddress, abi, tokenId) {
+    return await this.erc1155Manager.getTokenURI(contractAddress, tokenId);
+  }
+/**
+ * Admin mint ERC1155 (owner only, no payment required)
+ */
+async adminMintERC1155(wallet, contractAddress, abi, toAddress, tokenId, amount) {
+  console.log(`👑 Admin minting ERC1155: ${amount} of token ${tokenId} to ${toAddress}`);
+  return await this.erc1155.adminMintERC1155(wallet, contractAddress, abi, toAddress, tokenId, amount);
+}
+/**
+ * Admin batch mint ERC1155 (owner only)
+ */
+async adminBatchMintERC1155(wallet, contractAddress, abi, toAddress, tokenIds, amounts) {
+  console.log(`👑 Admin batch minting ERC1155 to ${toAddress}`);
+  return await this.erc1155.adminBatchMintERC1155(wallet, contractAddress, abi, toAddress, tokenIds, amounts);
+}
+
+/**
+ * Pause ERC1155 contract (owner only)
+ */
+ async pauseERC1155Contract(ownerWallet, contractAddress, abi) {
+    if (!ownerWallet) {
+      throw new Error('Owner wallet is required');
+    }
+
+    return await this.erc1155Manager.pauseContract({
+      ownerPrivateKey: ownerWallet.exportPrivateKey(),
+      contractAddress
+    });
+  }
+/**
+ * Unpause ERC1155 contract (owner only)
+ */
+async unpauseERC1155Contract(ownerWallet, contractAddress, abi) {
+    if (!ownerWallet) {
+      throw new Error('Owner wallet is required');
+    }
+
+    return await this.erc1155Manager.unpauseContract({
+      ownerPrivateKey: ownerWallet.exportPrivateKey(),
+      contractAddress
+    });
+  }
+/**
+ * Withdraw funds from ERC1155 contract (owner only)
+ */
+async withdrawERC1155Funds(wallet, contractAddress, abi) {
+  console.log(`💸 Withdrawing funds from ERC1155 contract`);
+  return await this.erc1155.withdrawERC1155Funds(wallet, contractAddress, abi);
+}
+/**
+ * Get all ERC1155 tokens owned by address
+ */
+async getERC1155OwnedTokens(contractAddress, abi, ownerAddress) {
+  console.log(`📦 Getting all ERC1155 tokens for ${ownerAddress}`);
+  return await this.erc1155.getERC1155OwnedTokens(contractAddress, abi, ownerAddress);
+}
+ async withdrawERC1155Funds(ownerWallet, contractAddress, abi) {
+    if (!ownerWallet) {
+      throw new Error('Owner wallet is required');
+    }
+
+    return await this.erc1155Manager.withdrawFunds({
+      ownerPrivateKey: ownerWallet.exportPrivateKey(),
+      contractAddress
+    });
+  }
 }
