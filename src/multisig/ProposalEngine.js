@@ -1,11 +1,4 @@
-/**
- * File Location: src/multisig/ProposalEngine.js
- * 
- * ProposalEngine - Handles proposal creation, tracking, and approval management
- * 
- * This class manages the lifecycle of proposals within the multisig system,
- * from creation to execution or rejection.
- */
+
 
 export class ProposalEngine {
   constructor(multisigManager) {

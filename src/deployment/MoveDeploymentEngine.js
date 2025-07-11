@@ -1,8 +1,3 @@
-/**
- * FILE LOCATION: src/deployment/MoveDeploymentEngine.js
- * 
- * EXACT WORKING METHOD: Copy your deployMoveToken method exactly but with custom content
- */
 
 export class MoveDeploymentEngine {
   constructor(umiKit) {

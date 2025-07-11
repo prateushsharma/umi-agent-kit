@@ -1,8 +1,3 @@
-/**
- * FILE LOCATION: src/index.js (in your umi-agent-kit source)
- * 
- * REPLACE your existing src/index.js with this updated version
- */
 
 export { UmiAgentKit } from './UmiAgentKit.js';
 export { UmiWallet, ethToMoveAddress, moveToEthAddress } from './wallet/UmiWallet.js';
