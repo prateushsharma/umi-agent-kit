@@ -1,6 +1,4 @@
 /**
- * File: src/ai/AIManager.js
- * 
  * Main AI interface that manages conversation, context, and function execution
  * Allows full customization of Groq configuration
  */

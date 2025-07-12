@@ -1,6 +1,4 @@
 /**
- * File: src/ai/ContextManager.js
- * 
  * Manages conversation context, user preferences, and AI memory
  */
 

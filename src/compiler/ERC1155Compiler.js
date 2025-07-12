@@ -1,4 +1,4 @@
-// File: src/compiler/ERC1155Compiler.js
+
 // Complete OpenZeppelin ERC1155 implementation with ALL contracts embedded
 
 import solc from 'solc';
