@@ -1,4 +1,4 @@
-![umi-agent-kit logo]([https://ibb.co/vCc8sDCz](https://i.ibb.co/6cy5vNcs/umi-agent-kit-logo.png))
+![umi-agent-kit logo](https://i.ibb.co/6cy5vNcs/umi-agent-kit-logo.png)
 # 🚀 UmiAgentKit v3.0 - The Complete AI-Powered Blockchain Toolkit
 
 **The World's Most Advanced AI-Driven Blockchain Development Platform**  
