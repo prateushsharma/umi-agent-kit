@@ -5,90 +5,38 @@ export class MoveDeploymentEngine {
     this.client = umiKit.client;
   }
 
-  /**
-   * EXACT COPY: Use your deployMoveToken method but with custom Move content
-   */
-  async deployMoveContract(contract, deployerWallet, initArgs = {}) {
-    try {
-      console.log(`🚀 Deploying Move contract: ${contract.name} (EXACT working method)`);
-
-      // ✅ Extract from your exact working deployMoveToken method
-      const deployerPrivateKey = deployerWallet.exportPrivateKey();
-      
-      // Validate inputs (from your working method)
-      if (!deployerPrivateKey) throw new Error('Deployer private key required');
-      if (!contract.name) throw new Error('Contract name required');
-
-      console.log(`🔨 Creating ${contract.name} Move contract...`);
-
-      // Format private key (from your working method)
-      const formattedKey = deployerPrivateKey.startsWith('0x') 
-        ? deployerPrivateKey 
-        : '0x' + deployerPrivateKey;
-
-      const { privateKeyToAccount } = await import('viem/accounts');
-      const { createWalletClient, http } = await import('viem');
-      
-      const account = privateKeyToAccount(formattedKey);
-      
-      // Convert ETH address to Move address format (your exact method)
-      const moveAddress = this.kit.tokenManager._ethToMoveAddress(account.address);
-      console.log(`📍 Move address: ${moveAddress}`);
-
-      // ✅ CRITICAL: Create custom Move contract content
-      const moveContract = this.generateCustomMoveContract(contract, moveAddress, initArgs);
-      console.log(`✅ Custom Move contract generated`);
-
-      const walletClient = createWalletClient({
-        account,
-        chain: this.kit.client.chain,
-        transport: http(this.kit.client.chain.rpcUrls.default.http[0])
-      });
-
-      console.log(`🚀 Deploying Move contract from ${account.address}...`);
-
-      // ✅ CRITICAL: Use your exact _createMoveDeploymentPayload method
-      const deploymentPayload = this.kit.tokenManager._createMoveDeploymentPayload(moveContract, moveAddress);
-
-      // ✅ Deploy using Umi-compatible transaction (your exact method)
-      const hash = await walletClient.sendTransaction({
-        to: account.address, // Deploy to own address for Move contracts (your exact pattern)
-        data: deploymentPayload
-      });
-
-      console.log(`📝 Transaction hash: ${hash}`);
-
-      // Wait for deployment (your exact method)
-      const receipt = await this.kit.client.waitForTransaction(hash);
-      
-      const moduleAddress = `${moveAddress}::${contract.name.toLowerCase()}_token`;
-      console.log(`✅ Move contract deployed at: ${moduleAddress}`);
-
-      return {
-        hash,
-        moduleAddress,
-        contractAddress: receipt.contractAddress || account.address,
-        deployer: account.address,
-        moveAddress,
-        name: contract.name,
-        symbol: contract.name.toUpperCase().slice(0, 4),
-        decimals: 8,
-        monitorSupply: true,
-        type: 'Move',
-        contract: moveContract,
-        
-        // Our additions
-        address: moduleAddress,
-        txHash: hash,
-        initialized: false,
-        deployerAddress: deployerWallet.getAddress(),
-        exactWorkingMethod: true
-      };
-
-    } catch (error) {
-      throw new Error(`EXACT Move deployment failed: ${error.message}`);
-    }
+ 
+  // FIXED: Enhanced existing deployMoveContract method
+async deployMoveContract(contract, deployerWallet, constructorArgs = {}) {
+  try {
+    // 1. Compile Move contract with proper dependencies
+    const compiled = await this.compileMoveContract(contract);
+    
+    // 2. Handle Move-specific address resolution
+    const moduleAddress = await this.generateModuleAddress(deployerWallet);
+    
+    // 3. Deploy with proper Move transaction structure
+    const deployTx = await this.createMoveDeployTransaction({
+      moduleAddress,
+      bytecode: compiled.bytecode,
+      dependencies: compiled.dependencies
+    });
+    
+    // 4. Submit and wait for confirmation
+    const result = await deployerWallet.submitTransaction(deployTx);
+    await this.waitForConfirmation(result.hash);
+    
+    return {
+      address: `${moduleAddress}::${contract.name}`,
+      hash: result.hash,
+      type: 'move',
+      initialized: Object.keys(constructorArgs).length > 0
+    };
+    
+  } catch (error) {
+    throw new Error(`Move contract deployment failed: ${error.message}`);
   }
+}
 
   /**
    * Generate custom Move contract based on type
