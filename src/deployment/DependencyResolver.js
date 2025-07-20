@@ -7,15 +7,44 @@ export class DependencyResolver {
   /**
    * Auto-resolve dependencies by analyzing Move contract imports and usage
    */
-  autoResolve(contracts) {
-    console.log('🔍 Auto-resolving contract dependencies...');
+ // FIXED: Enhanced existing autoResolve method in DependencyResolver
+async autoResolve(contracts) {
+  const dependencyGraph = new Map();
+  
+  for (const contract of contracts) {
+    let dependencies = [];
     
-    const dependencies = this.analyzeDependencies(contracts);
-    const deploymentOrder = this.topologicalSort(contracts, dependencies);
+    // Check if this is a Move contract
+    if (contract.content && contract.content.includes('module ') && contract.content.includes('::')) {
+      dependencies = await this.parseMoveModuleDependencies(contract.content);
+    } else {
+      // Handle Solidity dependencies (existing logic)
+      dependencies = await this.parseSolidityDependencies(contract.content);
+    }
     
-    console.log(`📋 Deployment order: ${deploymentOrder.map(c => c.name).join(' → ')}`);
-    return deploymentOrder;
+    dependencyGraph.set(contract.name, dependencies);
   }
+  
+  // Use existing topological sort logic
+  return this.topologicalSort(dependencyGraph);
+}
+
+// Add new helper method for Move dependencies
+async parseMoveModuleDependencies(contractContent) {
+  const dependencies = [];
+  
+  // Parse 'use' statements in Move contracts
+  const useRegex = /use\s+([\w:]+)/g;
+  let match;
+  while ((match = useRegex.exec(contractContent)) !== null) {
+    const modulePath = match[1];
+    if (!modulePath.includes('std::') && !modulePath.includes('aptos_framework::')) {
+      dependencies.push(modulePath.split('::')[0]);
+    }
+  }
+  
+  return dependencies;
+}
 
   /**
    * Resolve dependencies from deployment.json config
