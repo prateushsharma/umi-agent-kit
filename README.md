@@ -1,4 +1,4 @@
-![umi-agent-kit logo](https://github-production-user-asset-6210df.s3.amazonaws.com/115470025/465467168-dce4cb93-05ba-4423-9d77-c920eca14193.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20250711%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250711T205442Z&X-Amz-Expires=300&X-Amz-Signature=aa62650c73588db86826abc75ed78f3e5aaf2d033b10b93797f8a408d4a9b05c&X-Amz-SignedHeaders=host)
+![umi-agent-kit logo](https://i.ibb.co/6cy5vNcs/umi-agent-kit-logo.png)
 # 🚀 UmiAgentKit v3.0 - The Complete AI-Powered Blockchain Toolkit
 
 **The World's Most Advanced AI-Driven Blockchain Development Platform**  
