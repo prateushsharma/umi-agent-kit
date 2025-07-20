@@ -1956,7 +1956,40 @@ async deployWithConfig(contractsPath, deployerWallet, configObject = {}) {
   }
 }
 // ====== ADDITIONAL DEPLOYMENT UTILITIES ======
-
+// FIXED: Enhanced existing deployWithConstructor method
+async deployWithConstructor(contract, deployerWallet, constructorArgs) {
+  try {
+    // Check if this is a Move contract
+    if (contract.content && contract.content.includes('module ') && contract.content.includes('::')) {
+      // Deploy Move module first
+      const moduleResult = await this.deployModuleOnly(contract, deployerWallet);
+      
+      // Then initialize with constructor args (Move init function)
+      if (Object.keys(constructorArgs).length > 0) {
+        const initResult = await this.initializeContract(
+          moduleResult.address,
+          constructorArgs,
+          deployerWallet
+        );
+        
+        return {
+          ...moduleResult,
+          initialized: true,
+          initHash: initResult.hash
+        };
+      }
+      
+      return moduleResult;
+      
+    } else {
+      // Handle Solidity contracts (existing logic)
+      return await this.deployEVMContract(contract, deployerWallet, constructorArgs);
+    }
+    
+  } catch (error) {
+    throw new Error(`Contract deployment with constructor failed: ${error.message}`);
+  }
+}
 /**
  * Deploy a single Move contract
  * Convenience method for deploying just one contract
