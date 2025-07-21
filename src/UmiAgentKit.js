@@ -1872,26 +1872,74 @@ export class UmiAgentKit {
  * Deploy contracts without constructor values
  * Constructor values will be set later via setConstructorValues()
  */
+// FIXED: Enhanced existing deployContracts method with better error handling
 async deployContracts(contractsPath, deployerWallet) {
+  const deploymentState = {
+    deployed: {},
+    failed: {},
+    partial: false
+  };
+  
   try {
-    console.log(`🚀 Starting deployment from ${contractsPath}...`);
+    const contracts = await this.scanContractsFolder(contractsPath);
     
-    const deployed = await this.deploymentManager.deployContractsOnly(
-      contractsPath, 
-      deployerWallet
-    );
+    for (const contract of contracts) {
+      try {
+        console.log(`🚀 Deploying ${contract.name}...`);
+        
+        // Use existing deployModuleOnly method
+        const result = await this.deployModuleOnly(contract, deployerWallet);
+        deploymentState.deployed[contract.name] = result;
+        
+        console.log(`✅ ${contract.name} deployed: ${result.address}`);
+        
+      } catch (contractError) {
+        console.error(`❌ Failed to deploy ${contract.name}:`, contractError.message);
+        
+        deploymentState.failed[contract.name] = {
+          error: contractError.message,
+          stack: contractError.stack,
+          contract: contract.name
+        };
+        
+        // Provide specific recovery suggestions
+        if (contractError.message.includes('gas')) {
+          console.log(`💡 ${contract.name}: Try increasing gas limit`);
+        } else if (contractError.message.includes('dependencies')) {
+          console.log(`💡 ${contract.name}: Check module dependencies`);
+        } else if (contractError.message.includes('compilation')) {
+          console.log(`💡 ${contract.name}: Check Move syntax`);
+        }
+        
+        deploymentState.partial = true;
+      }
+    }
     
-    console.log(`✅ Deployment complete! ${Object.keys(deployed).length} contract(s) deployed.`);
-    return deployed;
-
+    // Use existing logging method or add simple summary
+    this.logDeploymentSummary(deploymentState);
+    
+    return deploymentState;
+    
   } catch (error) {
+    deploymentState.criticalError = error.message;
     throw new Error(`Deploy contracts failed: ${error.message}`);
   }
 }
-/**
- * Set constructor values after deployment
- * Use this after deployContracts() to initialize specific contracts
- */
+
+// Add new helper method for deployment summary
+logDeploymentSummary(state) {
+  console.log('\n📊 DEPLOYMENT SUMMARY:');
+  console.log(`✅ Successful: ${Object.keys(state.deployed).length}`);
+  console.log(`❌ Failed: ${Object.keys(state.failed).length}`);
+  
+  if (state.partial) {
+    console.log('\n🔧 RECOVERY SUGGESTIONS:');
+    Object.entries(state.failed).forEach(([name, failure]) => {
+      console.log(`- ${name}: ${failure.error}`);
+    });
+  }
+}
+
 async setConstructorValues(contractAddress, constructorArgs, callerWallet) {
   try {
     console.log(`⚙️ Setting constructor values for contract: ${contractAddress}`);

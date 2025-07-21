@@ -3,39 +3,106 @@ export class MoveDeploymentEngine {
   constructor(umiKit) {
     this.kit = umiKit;
     this.client = umiKit.client;
+     this.bcs = new BCS(getRustConfig());
+  this.setupBCSTypes();
   }
-
+setupBCSTypes() {
+  // Register Move-specific enum types for Umi Network
+  this.bcs.registerEnumType('ScriptOrDeployment', {
+    Script: '',
+    Module: 'Vec<u8>',  // Add Module support
+    EvmContract: 'Vec<u8>',
+  });
+  
+  this.bcs.registerEnumType('SerializableTransactionData', {
+    EoaBaseTokenTransfer: '',
+    ScriptOrDeployment: '',
+    EntryFunction: '',
+    L2Contract: '',
+    EvmContract: 'Vec<u8>',
+  });
+}
  
   // FIXED: Enhanced existing deployMoveContract method
+// ADD these methods to your existing MoveDeploymentEngine.js
+
+// Enhance existing deployMoveContract method
 async deployMoveContract(contract, deployerWallet, constructorArgs = {}) {
   try {
-    // 1. Compile Move contract with proper dependencies
+    console.log(`📦 Deploying Move module: ${contract.name}`);
+    
+    // 1. Use existing compilation logic but enhance it
     const compiled = await this.compileMoveContract(contract);
     
-    // 2. Handle Move-specific address resolution
-    const moduleAddress = await this.generateModuleAddress(deployerWallet);
+    // 2. Use existing address generation
+    const moduleAddress = deployerWallet.getAddress();
     
-    // 3. Deploy with proper Move transaction structure
-    const deployTx = await this.createMoveDeployTransaction({
-      moduleAddress,
-      bytecode: compiled.bytecode,
-      dependencies: compiled.dependencies
-    });
+    // 3. Enhance existing serialization
+    const serializedModule = this.serialize(compiled.bytecode, 'move');
     
-    // 4. Submit and wait for confirmation
-    const result = await deployerWallet.submitTransaction(deployTx);
-    await this.waitForConfirmation(result.hash);
+    // 4. Use existing transaction creation but with Move specifics
+    const deployTx = {
+      to: null, // Module deployment
+      data: serializedModule,
+      gasLimit: 5000000, // Higher limit for Move modules
+      gasPrice: await this.kit.getGasPrice()
+    };
+    
+    // 5. Use existing transaction submission
+    const txResponse = await deployerWallet.sendTransaction(deployTx);
+    await txResponse.wait();
+    
+    // 6. Use existing initialization logic
+    let initialized = false;
+    if (Object.keys(constructorArgs).length > 0) {
+      await this.initializeContract(
+        `${moduleAddress}::${contract.name}`,
+        constructorArgs,
+        deployerWallet
+      );
+      initialized = true;
+    }
     
     return {
       address: `${moduleAddress}::${contract.name}`,
-      hash: result.hash,
+      hash: txResponse.hash,
       type: 'move',
-      initialized: Object.keys(constructorArgs).length > 0
+      initialized,
+      functions: contract.functions || [],
+      structs: contract.structs || []
     };
     
   } catch (error) {
     throw new Error(`Move contract deployment failed: ${error.message}`);
   }
+}
+
+// ADD new helper method for Move initialization
+async initializeContract(contractAddress, initArgs, callerWallet) {
+  try {
+    // Create initialization transaction for Move contracts
+    const initFunction = `${contractAddress}::initialize`;
+    
+    const initTx = {
+      to: contractAddress.split('::')[0],
+      data: this.encodeMoveFunction(initFunction, initArgs),
+      gasLimit: 2000000
+    };
+    
+    const txResponse = await callerWallet.sendTransaction(initTx);
+    return await txResponse.wait();
+    
+  } catch (error) {
+    throw new Error(`Move initialization failed: ${error.message}`);
+  }
+}
+
+// ADD method to encode Move function calls
+encodeMoveFunction(functionName, args) {
+  // Simple encoding for Move function calls
+  const argsArray = Object.values(args);
+  const encodedArgs = JSON.stringify(argsArray);
+  return '0x' + Buffer.from(functionName + '::' + encodedArgs).toString('hex');
 }
 
   /**
@@ -234,4 +301,24 @@ module ${moveAddress}::${contractName} {
       throw new Error(`Contract initialization failed: ${error.message}`);
     }
   }
+  // FIXED: Enhanced existing serialize method in MoveDeploymentEngine
+serialize(bytecode, contractType = 'move') {
+  if (contractType === 'move') {
+    // Move module serialization for Umi
+    const code = Uint8Array.from(Buffer.from(bytecode.replace('0x', ''), 'hex'));
+    
+    // Use existing BCS setup but with Move module structure
+    const moduleBundle = this.bcs.ser('ScriptOrDeployment', { 
+      Module: code 
+    });
+    
+    return '0x' + moduleBundle.toString('hex');
+    
+  } else {
+    // Keep existing EVM serialization logic
+    const code = Uint8Array.from(Buffer.from(bytecode.replace('0x', ''), 'hex'));
+    const evmContract = this.bcs.ser('ScriptOrDeployment', { EvmContract: code });
+    return '0x' + evmContract.toString('hex');
+  }
+}
 }
