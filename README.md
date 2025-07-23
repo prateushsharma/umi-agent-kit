@@ -1,7 +1,7 @@
-![umi-agent-kit logo](https://i.ibb.co/6cy5vNcs/umi-agent-kit-logo.png)
+![umi-agent-kit logo](https://i.ibb.co/8nNMFzHW/umiagentkit.png)
 # 🚀 UmiAgentKit v3.0 - The Complete AI-Powered Blockchain Toolkit
 
-**The World's Most Advanced AI-Driven Blockchain Development Platform**  
+**The World's Most Advanced AI-Driven Blockchain Development Platform**
 *Revolutionary Natural Language Blockchain Operations with Server-Based Multisig and advance functionalities to build projects on umi*
 
 ---
@@ -212,24 +212,24 @@ const studio = await kit.createGamingStudioMultisig({
 #### **⚙️ Smart Gaming Rules:**
 ```javascript
 const defaultRules = {
-  tokenCreation: { 
-    requiredRoles: ['lead_developer', 'ceo'], 
+  tokenCreation: {
+    requiredRoles: ['lead_developer', 'ceo'],
     threshold: 2,
     description: 'Create new game tokens'
   },
-  nftCollection: { 
-    requiredRoles: ['art_director', 'game_designer'], 
+  nftCollection: {
+    requiredRoles: ['art_director', 'game_designer'],
     threshold: 2,
     description: 'Create NFT collections'
   },
-  playerRewards: { 
-    requiredRoles: ['game_designer'], 
+  playerRewards: {
+    requiredRoles: ['game_designer'],
     threshold: 1,
     maxAmount: '100',
     description: 'Distribute player rewards'
   },
-  emergencyStop: { 
-    requiredRoles: ['ceo'], 
+  emergencyStop: {
+    requiredRoles: ['ceo'],
     threshold: 1,
     description: 'Emergency operations'
   }
@@ -961,7 +961,7 @@ Initialize contracts after deployment with constructor values.
 ```javascript
 await kit.setConstructorValues(contracts.GameToken.address, {
   name: 'GameCoin',
-  symbol: 'GAME', 
+  symbol: 'GAME',
   decimals: 8,
   initial_supply: 1000000
 }, wallet);
@@ -990,7 +990,7 @@ const ecosystem = await kit.deployWithJson('./contracts/', wallet, './my-config.
 
 **Parameters:**
 - `contractsPath` - Path to contracts folder
-- `deployerWallet` - UmiWallet object for deployment  
+- `deployerWallet` - UmiWallet object for deployment
 - `configFile` - Optional path to config file (defaults to deployment.json)
 
 **Example deployment.json:**
@@ -1029,14 +1029,14 @@ Deploy contracts using JavaScript configuration object.
 
 ```javascript
 const ecosystem = await kit.deployWithConfig('./contracts/', wallet, {
-  GameToken: { 
-    name: 'GameCoin', 
-    symbol: 'GAME', 
+  GameToken: {
+    name: 'GameCoin',
+    symbol: 'GAME',
     decimals: 8,
     initial_supply: 1000000
   },
-  HeroNFT: { 
-    name: 'Epic Heroes', 
+  HeroNFT: {
+    name: 'Epic Heroes',
     symbol: 'HERO',
     game_token: '@GameToken'  // Reference to GameToken
   },
@@ -1127,7 +1127,7 @@ const mintResult = await kit.callContractFunction(
 
 // Call a view function
 const balanceResult = await kit.callContractFunction(
-  '0x123::gametoken', 
+  '0x123::gametoken',
   'get_balance',
   {
     account: wallet.getAddress()
@@ -1158,7 +1158,7 @@ console.log(summary);
 //   contracts: {
 //     GameToken: {
 //       address: "0x123::gametoken",
-//       type: "move", 
+//       type: "move",
 //       initialized: true,
 //       txHash: "0xabc..."
 //     },
@@ -1182,7 +1182,7 @@ Export deployment results to JSON file for later reference.
 
 ```javascript
 await kit.exportDeploymentResults(
-  deployedContracts, 
+  deployedContracts,
   './deployment-results.json'
 );
 ```
@@ -1287,10 +1287,10 @@ await kit.exportDeploymentResults(ecosystem, './results.json');
 try {
   // Validate before deployment
   await kit.validateContracts('./contracts/');
-  
+
   // Deploy contracts
   const contracts = await kit.deployContracts('./contracts/', wallet);
-  
+
   // Initialize contracts
   for (const [name, contract] of Object.entries(contracts)) {
     if (!contract.initialized) {
@@ -1300,16 +1300,16 @@ try {
       }, wallet);
     }
   }
-  
+
   console.log('🎉 Deployment successful!');
-  
+
 } catch (error) {
   console.error('💥 Deployment failed:', error.message);
-  
+
   if (error.message.includes('gas')) {
     console.log('💡 Try increasing gas limit or check wallet balance');
   }
-  
+
   if (error.message.includes('compilation')) {
     console.log('💡 Check Move contract syntax');
   }
@@ -1322,7 +1322,7 @@ try {
 
 ### **🚀 Primary Deployment (3 options)**
 - `deployContracts()` - Deploy now, constructor later
-- `deployWithJson()` - Deploy with JSON configuration  
+- `deployWithJson()` - Deploy with JSON configuration
 - `deployWithConfig()` - Deploy with JavaScript object
 
 ### **⚙️ Constructor & Initialization**
@@ -1404,10 +1404,10 @@ async function main() {
   const kit = new UmiAgentKit({ network: 'devnet' });
   kit.enableAI({ groqApiKey: 'your-groq-key' });
   const wallet = kit.importWallet('your-private-key');
-  
+
   // Deploy contracts with AI
   const result = await kit.chat("deploy my gaming contracts");
-  
+
   console.log("Deployed contracts:", result);
 }
 
@@ -1496,19 +1496,19 @@ await kit.chat("deploy my gaming ecosystem");
 ```
 1. 💡 Developer Proposes
    "Create rare weapon NFT collection"
-   
+
 2. 🔔 Team Notified
    CEO: ✅ Approved - "Great idea!"
    Artist: ✅ Approved - "I'll design the weapons"
    Designer: ⏳ Pending review
-   
+
 3. 🎯 Threshold Met (3/5)
    Auto-execution triggered
-   
+
 4. ⚡ Smart Contract Deployed
    Collection "Legendary Weapons" created
    Contract: 0xdef456...
-   
+
 5. 📊 Team Dashboard Updated
    New collection added to studio assets
    Ready for minting and distribution
@@ -1531,13 +1531,13 @@ await kit.chat("deploy my gaming ecosystem");
 
 ### **💎 vs Competitors**
 
-**Other toolkits:** Complex APIs, no AI, limited gaming support  
+**Other toolkits:** Complex APIs, no AI, limited gaming support
 **UmiAgentKit:** AI-first, gaming-optimized, revolutionary multisig
 
-**Other multisig:** Requires all online, complex setup  
+**Other multisig:** Requires all online, complex setup
 **UmiAgentKit:** Server-based, AI-managed, gaming templates
 
-**Other AI tools:** Limited blockchain integration  
+**Other AI tools:** Limited blockchain integration
 **UmiAgentKit:** Complete blockchain operations via AI
 
 ---
@@ -1568,7 +1568,7 @@ Push the boundaries of what's possible with AI + blockchain.
 
 For the first time in blockchain history, you can:
 - Build complex applications by talking naturally
-- Coordinate teams with intelligent multisig systems  
+- Coordinate teams with intelligent multisig systems
 - Deploy to multiple virtual machines seamlessly
 - Create gaming economies in minutes, not months
 - create advance projects and integrate easily with umi using umi-agent-kit functions
@@ -1607,13 +1607,13 @@ use umi_agent_kit::UmiAgentKit;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let kit = UmiAgentKit::new().await?;
-    
+
     // Natural language operations
     kit.chat("deploy gaming token with 1M supply").await?;
     kit.chat("create legendary weapon NFT collection").await?;
     kit.chat("setup tournament bracket for 64 players").await?;
     kit.chat("distribute rewards to top 10 players").await?;
-    
+
     Ok(())
 }
 ```
@@ -1625,10 +1625,10 @@ use umi_agent_kit::{UmiAgentKit, TokenConfig, NFTConfig};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let kit = UmiAgentKit::new().await?;
-    
+
     // Create wallet
     let wallet = kit.create_wallet().await?;
-    
+
     // Deploy token
     let token = kit.deploy_token(TokenConfig {
         name: "GameCoin".to_string(),
@@ -1636,7 +1636,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         supply: 1_000_000,
         decimals: 18,
     }).await?;
-    
+
     // Create NFT collection
     let nft = kit.deploy_nft(NFTConfig {
         name: "Epic Heroes".to_string(),
@@ -1644,19 +1644,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         max_supply: 10000,
         mint_price: "0.01".to_string(),
     }).await?;
-    
+
     // Setup multisig
     let multisig = kit.create_multisig({
         name: "Gaming Studio",
         members: vec![wallet.address(), team_wallet.address()],
         threshold: 2,
     }).await?;
-    
+
     // Transfer operations
     kit.transfer_eth(&wallet, "0x742d35...", "1.5").await?;
     kit.mint_token(&token, &wallet.address(), 1000).await?;
     kit.mint_nft(&nft, &wallet.address()).await?;
-    
+
     Ok(())
 }
 ```
@@ -1676,23 +1676,23 @@ impl GameServer {
             kit: UmiAgentKit::new().await.unwrap(),
         }
     }
-    
+
     // AI-powered game economy management
     async fn manage_economy(&self) {
         self.kit.chat("analyze player spending and adjust token rewards").await;
         self.kit.chat("create weekly tournament with prize pool").await;
         self.kit.chat("distribute guild treasury to active members").await;
     }
-    
+
     // Direct operations for real-time gaming
     async fn reward_player(&self, player: &str, amount: u64) {
         self.kit.mint_token(&self.game_token, player, amount).await;
     }
-    
+
     async fn create_tournament(&self, max_players: u32) {
         self.kit.deploy_tournament_contract(max_players).await;
     }
-    
+
     async fn process_match_result(&self, winner: &str, loser: &str) {
         // Update player stats on-chain
         self.kit.update_player_stats(winner, "wins", 1).await;
@@ -1713,7 +1713,7 @@ package main
 
 import (
     "context"
-    "github.com/prateushsharma/umiagentkit-go"
+    "github.com/UmiNetwork/umiagentkit-go"
 )
 
 func main() {
@@ -1721,9 +1721,9 @@ func main() {
     if err != nil {
         panic(err)
     }
-    
+
     ctx := context.Background()
-    
+
     // Natural language blockchain operations
     kit.Chat(ctx, "deploy enterprise gaming ecosystem")
     kit.Chat(ctx, "setup corporate treasury multisig")
@@ -1738,7 +1738,7 @@ package main
 
 import (
     "context"
-    "github.com/prateushsharma/umiagentkit-go"
+    "github.com/UmiNetwork/umiagentkit-go"
 )
 
 func main() {
@@ -1746,12 +1746,12 @@ func main() {
     if err != nil {
         panic(err)
     }
-    
+
     ctx := context.Background()
-    
+
     // Create enterprise wallet
     wallet := kit.CreateWallet(ctx)
-    
+
     // Deploy token
     token, err := kit.DeployToken(ctx, umiagentkit.TokenConfig{
         Name:     "CorporateCoin",
@@ -1759,21 +1759,21 @@ func main() {
         Supply:   10000000,
         Decimals: 18,
     })
-    
+
     // Create NFT collection
     nft, err := kit.DeployNFT(ctx, umiagentkit.NFTConfig{
         Name:      "Employee Badges",
         Symbol:    "BADGE",
         MaxSupply: 50000,
     })
-    
+
     // Setup corporate multisig
     multisig, err := kit.CreateMultisig(ctx, umiagentkit.MultisigConfig{
         Name:      "Corporate Treasury",
         Members:   []string{ceo, cfo, cto},
         Threshold: 2,
     })
-    
+
     // Batch operations
     err = kit.BatchTransfer(ctx, token, []umiagentkit.Transfer{
         {To: employee1, Amount: 1000},
@@ -1789,7 +1789,7 @@ package main
 
 import (
     "github.com/gin-gonic/gin"
-    "github.com/prateushsharma/umiagentkit-go"
+    "github.com/UmiNetwork/umiagentkit-go"
 )
 
 type CorporateService struct {
@@ -1839,7 +1839,7 @@ from umi_agent_kit import UmiAgentKit
 
 async def main():
     kit = UmiAgentKit()
-    
+
     # Natural language data science operations
     await kit.chat("analyze player behavior and create rewards")
     await kit.chat("optimize token economics using ML")
@@ -1857,10 +1857,10 @@ from umi_agent_kit import UmiAgentKit, TokenConfig, NFTConfig
 
 async def main():
     kit = UmiAgentKit()
-    
+
     # Create wallet
     wallet = await kit.create_wallet()
-    
+
     # Deploy analytics token
     token = await kit.deploy_token(TokenConfig(
         name="DataCoin",
@@ -1868,21 +1868,21 @@ async def main():
         supply=1000000,
         decimals=18
     ))
-    
+
     # Create research NFT collection
     nft = await kit.deploy_nft(NFTConfig(
         name="Research Papers",
         symbol="PAPER",
         max_supply=10000
     ))
-    
+
     # Setup research multisig
     multisig = await kit.create_multisig({
         'name': 'Research Lab',
         'members': [wallet.address, lab_wallet.address],
         'threshold': 2
     })
-    
+
     # Data operations
     await kit.transfer_eth(wallet, "0x742d35...", "2.0")
     await kit.mint_token(token, wallet.address, 5000)
@@ -1902,50 +1902,50 @@ from sklearn.ensemble import RandomForestRegressor
 class BlockchainDataScience:
     def __init__(self):
         self.kit = UmiAgentKit()
-    
+
     # AI-powered analytics
     async def analyze_with_ai(self):
         await self.kit.chat("analyze all token transactions from last month")
         await self.kit.chat("predict optimal mint price for new NFT collection")
         await self.kit.chat("suggest tokenomics improvements based on usage data")
-    
+
     # Direct data operations
     async def get_token_analytics(self, token_address):
         transactions = await self.kit.get_token_transactions(token_address)
         holders = await self.kit.get_token_holders(token_address)
-        
+
         df = pd.DataFrame(transactions)
-        
+
         return {
             'total_volume': df['amount'].sum(),
             'unique_holders': len(holders),
             'avg_transaction': df['amount'].mean(),
             'transaction_frequency': len(df) / 30  # per day
         }
-    
+
     async def predict_nft_price(self, collection_address):
         sales_data = await self.kit.get_nft_sales(collection_address)
         df = pd.DataFrame(sales_data)
-        
+
         # Feature engineering
         features = self.extract_features(df)
-        
+
         # ML prediction
         model = RandomForestRegressor()
         model.fit(features[:-1], df['price'][:-1])
-        
+
         predicted_price = model.predict(features[-1:])
         return predicted_price[0]
-    
+
     async def optimize_token_distribution(self, token_address):
         holder_data = await self.kit.get_detailed_holder_data(token_address)
-        
+
         # Analyze distribution patterns
         distribution_analysis = self.analyze_distribution(holder_data)
-        
+
         # Create optimized distribution strategy
         optimization_plan = self.create_distribution_plan(distribution_analysis)
-        
+
         return optimization_plan
 ```
 
@@ -1964,7 +1964,7 @@ const deployment = await kit.chat("deploy full gaming ecosystem", {
 
 // AI agents collaborate:
 // - Architect: Designs contract structure
-// - Security: Reviews and validates contracts  
+// - Security: Reviews and validates contracts
 // - Economics: Optimizes tokenomics
 // - Frontend: Generates UI components
 ```
@@ -1973,7 +1973,7 @@ const deployment = await kit.chat("deploy full gaming ecosystem", {
 ```javascript
 // AI predicts and prevents issues
 await kit.chat("analyze this token launch and predict success rate");
-await kit.chat("suggest optimal mint price for this NFT collection");  
+await kit.chat("suggest optimal mint price for this NFT collection");
 await kit.chat("when should we launch this tournament for max participation?");
 
 // Direct analytics API
@@ -2021,7 +2021,7 @@ const deployment = await kit.deployMultiChain({
 // Cross-chain asset management
 await kit.bridgeTokens({
   from: 'ethereum',
-  to: 'polygon', 
+  to: 'polygon',
   token: gameTokenAddress,
   amount: '1000',
   recipient: playerAddress
@@ -2034,7 +2034,7 @@ await kit.syncGameState(gameContractAddress, ['arbitrum', 'base']);
 
 #### **🔗 Supported Networks:**
 - **Ethereum** - Full EVM compatibility
-- **Polygon** - Layer 2 scaling solutions  
+- **Polygon** - Layer 2 scaling solutions
 - **Arbitrum** - Optimistic rollup integration
 - **Base** - Coinbase L2 support
 - **Sui** - Additional Move VM support
@@ -2145,7 +2145,7 @@ interface GameEconomyConfig {
 
 class GameEconomyManager {
   constructor(private kit: UmiAgentKit) {}
-  
+
   async setupGameEconomy(config: GameEconomyConfig): Promise<void> {
     // Deploy core game token
     const gameToken = await this.kit.deployToken({
@@ -2154,21 +2154,21 @@ class GameEconomyManager {
       supply: config.gameToken.supply,
       decimals: 18
     });
-    
+
     // Create staking system
     const stakingContract = await this.kit.deployStaking({
       stakingToken: gameToken.address,
       rewardRate: config.stakingRewards,
       lockPeriod: 30 * 24 * 60 * 60 // 30 days
     });
-    
+
     // Setup liquidity pool
     const liquidityPool = await this.kit.createLiquidityPool({
       tokenA: gameToken.address,
       tokenB: this.kit.config.wethAddress,
       feeRate: 0.3
     });
-    
+
     // Create yield farming
     const yieldFarm = await this.kit.createYieldFarm({
       lpToken: liquidityPool.lpToken,
@@ -2176,12 +2176,12 @@ class GameEconomyManager {
       rewardRate: config.liquidityIncentives
     });
   }
-  
+
   async managePortfolio(portfolioAddress: string): Promise<PortfolioAnalytics> {
     const balances = await this.kit.getPortfolioBalances(portfolioAddress);
     const performance = await this.kit.calculatePortfolioPerformance(portfolioAddress);
     const recommendations = await this.kit.getRebalanceRecommendations(portfolioAddress);
-    
+
     return {
       totalValue: balances.totalUsdValue,
       performance: performance.roi,
@@ -2199,7 +2199,7 @@ interface DeFiProtocolConfig {
 
 class DeFiProtocolManager {
   constructor(private kit: UmiAgentKit) {}
-  
+
   async deployProtocol(config: DeFiProtocolConfig): Promise<DeFiProtocol> {
     // Deploy governance token
     const govToken = await this.kit.deployGovernanceToken({
@@ -2208,10 +2208,10 @@ class DeFiProtocolManager {
       votingDelay: config.governance.votingDelay,
       votingPeriod: config.governance.votingPeriod
     });
-    
+
     // Deploy lending pools
     const lendingPools = await Promise.all(
-      config.lending.markets.map(market => 
+      config.lending.markets.map(market =>
         this.kit.deployLendingPool({
           underlyingAsset: market.asset,
           collateralFactor: market.collateralFactor,
@@ -2220,14 +2220,14 @@ class DeFiProtocolManager {
         })
       )
     );
-    
+
     // Deploy DEX
     const dexRouter = await this.kit.deployDEXRouter({
       factory: await this.kit.deployDEXFactory(),
       weth: this.kit.config.wethAddress,
       feeRecipient: config.dex.feeRecipient
     });
-    
+
     return {
       governance: govToken,
       lending: lendingPools,
@@ -2301,4 +2301,4 @@ All new SDKs will include comprehensive DeFi support:
 
 *© 2025 UmiAgentKit - The World's Most Advanced AI-Powered Blockchain Toolkit*
 
-`Built with love💖 by - Prateush Sharma`
+`Built with love💖 by - Umi`

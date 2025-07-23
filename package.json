@@ -1,6 +1,6 @@
 {
   "name": "umi-agent-kit",
-  "version": "3.8.1",
+  "version": "3.8.2",
   "description": "AI-powered agent toolkit for Umi Network blockchain operations",
   "main": "src/index.js",
   "type": "module",
@@ -25,7 +25,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/prateushsharma/umiagentkit.git"
+    "url": "git+https://github.com/UmiNetwork/umiagentkit.git"
   },
   "files": [
     "src/**/*",
@@ -51,7 +51,7 @@
     "node": ">=18.0.0"
   },
   "bugs": {
-    "url": "https://github.com/prateushsharma/umiagentkit/issues"
+    "url": "https://github.com/UmiNetwork/umiagentkit/issues"
   },
-  "homepage": "https://github.com/prateushsharma/umiagentkit#readme"
+  "homepage": "https://github.com/UmiNetwork/umiagentkit#readme"
 }
