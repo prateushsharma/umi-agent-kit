@@ -1,14 +1,19 @@
 {
   "name": "umi-agent-kit",
-  "version": "3.8.2",
-  "description": "AI-powered agent toolkit for Umi Network blockchain operations",
+  "version": "3.9.0",
+  "description": "AI-powered agent toolkit for Umi Network with embedded official deployment toolchain",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
     "test": "jest",
+    "test:deployment": "node examples/embedded-deployment.js",
+    "test:advanced": "node examples/advanced-deployment.js",
     "lint": "eslint src/**/*.js",
     "format": "prettier --write src/**/*.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "build": "npm run lint && npm run format",
+    "clean": "rm -rf .umi-workspace-* deployment-results.json sample-contracts",
+    "setup:workspace": "node scripts/setup-workspace.js"
   },
   "keywords": [
     "umi",
@@ -19,7 +24,11 @@
     "ethereum",
     "move",
     "wallet",
-    "crypto"
+    "crypto",
+    "deployment",
+    "embedded",
+    "hardhat",
+    "aptos"
   ],
   "author": "Your Name",
   "license": "MIT",
@@ -29,6 +38,8 @@
   },
   "files": [
     "src/**/*",
+    "templates/**/*",
+    "examples/**/*",
     "README.md",
     "LICENSE"
   ],
@@ -47,11 +58,37 @@
     "jest": "^29.0.0",
     "prettier": "^3.0.0"
   },
+  "peerDependencies": {
+    "hardhat": "^2.19.0",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@moved/hardhat-plugin": "latest"
+  },
+  "peerDependenciesMeta": {
+    "hardhat": {
+      "optional": false
+    },
+    "@nomicfoundation/hardhat-toolbox": {
+      "optional": false
+    },
+    "@moved/hardhat-plugin": {
+      "optional": false
+    }
+  },
   "engines": {
     "node": ">=18.0.0"
   },
   "bugs": {
     "url": "https://github.com/UmiNetwork/umiagentkit/issues"
   },
-  "homepage": "https://github.com/UmiNetwork/umiagentkit#readme"
+  "homepage": "https://github.com/UmiNetwork/umiagentkit#readme",
+  "exports": {
+    ".": "./src/index.js",
+    "./deployment": "./src/deployment/EmbeddedDeploymentEngine.js",
+    "./examples": "./examples/embedded-deployment.js"
+  },
+  "config": {
+    "workspaceCleanupTimeout": "300000",
+    "defaultNetwork": "devnet",
+    "supportedNetworks": ["devnet", "testnet", "mainnet"]
+  }
 }

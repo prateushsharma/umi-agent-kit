@@ -12,9 +12,7 @@ import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { MultiContractDeployer } from './deployment/MultiContractDeployer.js';
 import { ERC1155Manager } from './erc1155/ERC1155Manager.js';
-import { EmbeddedDeploymentEngine } from './deployment/EmbeddedDeploymentEngine.js';
-import fs from 'fs/promises';
-import path from 'path';
+
 export class UmiAgentKit {
   constructor(config = {}) {
     // Set default config
@@ -53,8 +51,8 @@ export class UmiAgentKit {
     this.aiManager = null;
 
     // Add deployment manager
-    //this.deploymentManager = new MultiContractDeployer(this); // removed - was causing BCS error
- this.embeddedEngine = new EmbeddedDeploymentEngine(this);
+    this.deploymentManager = new MultiContractDeployer(this);
+
     this.erc1155Manager = new ERC1155Manager(this.client, this.client.chain);
 
     // NEW: Initialze embedded deployment engine
@@ -1861,15 +1859,6 @@ export class UmiAgentKit {
   /**
    * Close and cleanup
    */
-  
-  /**
-   * Clean up embedded workspace - FIXED
-   */
-  async cleanup() {
-    if (this.embeddedEngine) {
-      await this.embeddedEngine.cleanup();
-    }
-  }
   close() {
     this.walletManager.clearWallets();
     if (this.multisigManager) {
@@ -1886,49 +1875,16 @@ export class UmiAgentKit {
  * Deploy contracts without constructor values
  * Constructor values will be set later via setConstructorValues()
  */
-/**
-   * Scan contracts folder for .move and .sol files - FIXED
-   */
-   async scanContractsFolder(contractsPath) {
-    try {
-      // Use fs directly since it's imported at the top
-      const files = await fs.readdir(contractsPath);
-      const contracts = [];
-      
-      for (const file of files) {
-        if (file.endsWith('.move') || file.endsWith('.sol')) {
-          const filePath = path.join(contractsPath, file);
-          const content = await fs.readFile(filePath, 'utf8');
-          
-          contracts.push({
-            name: file.replace(/\.(move|sol)$/, ''),
-            fileName: file,
-            content,
-            path: filePath
-          });
-        }
-      }
-      
-      if (contracts.length === 0) {
-        throw new Error(`No .move or .sol files found in ${contractsPath}`);
-      }
-      
-      return contracts;
-      
-    } catch (error) {
-      throw new Error(`Failed to scan contracts folder: ${error.message}`);
-    }
-  }
 
  /**
    * Deploy contracts using embedded official Umi toolchain
    * Automatically detects Move vs Solidity contracts
    */
- async deployContracts(contractsPath, deployerWallet, options = {}) {
+  async deployContracts(contractsPath, deployerWallet, options = {}) {
     try {
       console.log(`🚀 Starting embedded deployment from: ${contractsPath}`);
       
-      // Scan contracts folder using local method (has fs import)
+      // Scan contracts folder
       const contracts = await this.scanContractsFolder(contractsPath);
       console.log(`📁 Found ${contracts.length} contract(s): ${contracts.map(c => c.name).join(', ')}`);
       
@@ -1945,11 +1901,7 @@ export class UmiAgentKit {
     }
   }
 
-
  /**
-   * Log deployment summary - FIXED
-   */
-  /**
    * Log deployment summary
    */
   logDeploymentSummary(results) {
@@ -2002,60 +1954,15 @@ async setConstructorValues(contractAddress, constructorArgs, callerWallet) {
 /**
    * Deploy with JSON configuration (enhanced with embedded engine)
    */
-   /**
-   * Load deployment configuration from JSON - FIXED
-   */
-   async loadDeploymentConfig(configPath) {
-    try {
-      const configContent = await fs.readFile(configPath, 'utf8');
-      const config = JSON.parse(configContent);
-      
-      if (!config.contracts) {
-        throw new Error('Invalid deployment.json: missing "contracts" section');
-      }
-      
-      return config;
-      
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        throw new Error(`Deployment config not found: ${configPath}`);
-      }
-      throw new Error(`Failed to load deployment config: ${error.message}`);
-    }
-  }
- /**
-   * Resolve @ContractName references in configuration - FIXED
-   */
- async resolveConfigArgs(configArgs, deployedContracts) {
-    const resolved = {};
-    
-    for (const [key, value] of Object.entries(configArgs)) {
-      if (typeof value === 'string' && value.startsWith('@')) {
-        const contractName = value.substring(1);
-        if (deployedContracts[contractName]) {
-          resolved[key] = deployedContracts[contractName].address;
-        } else {
-          throw new Error(`Referenced contract "${contractName}" not found in deployed contracts`);
-        }
-      } else {
-        resolved[key] = value;
-      }
-    }
-    
-    return resolved;
-  }
- /**
-   * Deploy with JSON configuration - NEW METHOD
-   */
   async deployWithJson(contractsPath, deployerWallet, configFile = null) {
     try {
       console.log(`🚀 Starting JSON-configured deployment...`);
       
-      // Load configuration using fs import
+      // Load configuration
       const configPath = configFile || path.join(contractsPath, 'deployment.json');
       const config = await this.loadDeploymentConfig(configPath);
       
-      // Scan contracts using local method
+      // Scan contracts
       const contracts = await this.scanContractsFolder(contractsPath);
       
       // Deploy in dependency order
@@ -2072,7 +1979,7 @@ async setConstructorValues(contractAddress, constructorArgs, callerWallet) {
         
         console.log(`🚀 Deploying ${contractName} with config...`);
         
-        // Resolve constructor arguments
+        // Resolve constructor arguments (replace @ContractName references)
         const resolvedArgs = await this.resolveConfigArgs(contractConfig.constructorParams || {}, results);
         
         // Deploy using embedded engine
@@ -2087,6 +1994,11 @@ async setConstructorValues(contractAddress, constructorArgs, callerWallet) {
         console.log(`✅ ${contractName} deployed: ${result.address}`);
       }
       
+      // Handle post-deployment actions
+      if (config.postDeployment) {
+        await this.handlePostDeployment(results, config.postDeployment);
+      }
+      
       console.log(`🎉 JSON deployment complete! ${Object.keys(results).length} contract(s) deployed.`);
       return results;
       
@@ -2095,18 +2007,14 @@ async setConstructorValues(contractAddress, constructorArgs, callerWallet) {
     }
   }
 
-
-/**
-   * Deploy with configuration object - NEW METHOD
-   */
-  /**
+ /**
    * Deploy with configuration object
    */
   async deployWithConfig(contractsPath, deployerWallet, configObject = {}) {
     try {
       console.log(`🚀 Starting config object deployment...`);
       
-      // Scan contracts using local method
+      // Scan contracts
       const contracts = await this.scanContractsFolder(contractsPath);
       
       // Deploy contracts with configuration
@@ -2138,7 +2046,6 @@ async setConstructorValues(contractAddress, constructorArgs, callerWallet) {
       throw new Error(`Config deployment failed: ${error.message}`);
     }
   }
-
 
 // ====== ADDITIONAL DEPLOYMENT UTILITIES ======
 // FIXED: Enhanced existing deployWithConstructor method
@@ -2176,14 +2083,14 @@ async deployWithConstructor(contract, deployerWallet, constructorArgs) {
   }
 }
 
- /**
-   * Deploy a single contract - NEW METHOD
+/**
+   * Deploy a single contract with constructor arguments
    */
-   async deploySingleContract(contractPath, deployerWallet, constructorArgs = {}) {
+  async deploySingleContract(contractPath, deployerWallet, constructorArgs = {}) {
     try {
       console.log(`🚀 Deploying single contract: ${contractPath}`);
       
-      // Read contract file using fs import
+      // Read contract file
       const contractContent = await fs.readFile(contractPath, 'utf8');
       const contractName = path.basename(contractPath).replace(/\.(move|sol)$/, '');
       
@@ -2193,7 +2100,7 @@ async deployWithConstructor(contract, deployerWallet, constructorArgs) {
         path: contractPath
       };
       
-      // Deploy based on contract type using embedded engine
+      // Deploy based on contract type
       let result;
       if (contract.content.includes('module ')) {
         result = await this.embeddedEngine.deployMoveContract(contract, deployerWallet, constructorArgs);
@@ -2208,6 +2115,7 @@ async deployWithConstructor(contract, deployerWallet, constructorArgs) {
       throw new Error(`Single contract deployment failed: ${error.message}`);
     }
   }
+
 /**
  * Get contract functions after deployment
  * Returns list of available functions for a deployed contract
@@ -2247,25 +2155,19 @@ getDeploymentSummary(deployedContracts) {
   return this.deploymentManager.getDeploymentSummary(deployedContracts);
 }
 
- /**
-   * Export deployment results to file - FIXED
-   */
-  async exportDeploymentResults(deployedContracts, outputPath = './deployment-results.json') {
-    const exportData = {
-      timestamp: new Date().toISOString(),
-      network: this.config.network,
-      summary: {
-        totalContracts: Object.keys(deployedContracts).length,
-        successful: Object.values(deployedContracts).filter(c => !c.error).length,
-        failed: Object.values(deployedContracts).filter(c => c.error).length
-      },
-      contracts: deployedContracts
-    };
-    
-    await fs.writeFile(outputPath, JSON.stringify(exportData, null, 2));
+/**
+ * Export deployment results to file
+ * Save deployment information to JSON file for later reference
+ */
+async exportDeploymentResults(deployedContracts, outputPath = './deployment-results.json') {
+  try {
+    await this.deploymentManager.exportDeploymentResults(deployedContracts, outputPath);
     console.log(`📄 Deployment results exported to: ${outputPath}`);
-  }
 
+  } catch (error) {
+    console.warn(`Failed to export deployment results: ${error.message}`);
+  }
+}
 
 /**
  * Validate contracts before deployment

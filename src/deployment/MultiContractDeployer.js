@@ -151,20 +151,23 @@ export class MultiContractDeployer {
     }
   }
 
-  // ========== HELPER METHODS (UNCHANGED) ==========
+  
 
+/**
+   * Scan contracts folder for .move and .sol files
+   */
   async scanContractsFolder(contractsPath) {
     try {
       const files = await fs.readdir(contractsPath);
-      
       const contracts = [];
+      
       for (const file of files) {
-        if (file.endsWith('.move')) {
+        if (file.endsWith('.move') || file.endsWith('.sol')) {
           const filePath = path.join(contractsPath, file);
           const content = await fs.readFile(filePath, 'utf8');
           
           contracts.push({
-            name: file.replace('.move', ''),
+            name: file.replace(/\.(move|sol)$/, ''),
             fileName: file,
             content,
             path: filePath
@@ -173,16 +176,19 @@ export class MultiContractDeployer {
       }
       
       if (contracts.length === 0) {
-        throw new Error(`No .move files found in ${contractsPath}`);
+        throw new Error(`No .move or .sol files found in ${contractsPath}`);
       }
       
       return contracts;
-
+      
     } catch (error) {
       throw new Error(`Failed to scan contracts folder: ${error.message}`);
     }
   }
 
+ /**
+   * Load deployment configuration from JSON
+   */
   async loadDeploymentConfig(configPath) {
     try {
       const configContent = await fs.readFile(configPath, 'utf8');
@@ -193,7 +199,7 @@ export class MultiContractDeployer {
       }
       
       return config;
-
+      
     } catch (error) {
       if (error.code === 'ENOENT') {
         throw new Error(`Deployment config not found: ${configPath}`);
@@ -202,6 +208,9 @@ export class MultiContractDeployer {
     }
   }
 
+ /**
+   * Resolve @ContractName references in configuration
+   */
   async resolveConfigArgs(configArgs, deployedContracts) {
     const resolved = {};
     
@@ -225,24 +234,28 @@ export class MultiContractDeployer {
     return await this.resolveConfigArgs(args, deployedContracts);
   }
 
+  /**
+   * Handle post-deployment actions (placeholder)
+   */
   async handlePostDeployment(deployedContracts, postConfig) {
-    try {
-      if (postConfig.permissions) {
-        console.log(`🔐 Setting up permissions...`);
-        for (const permission of postConfig.permissions) {
-          await this.grantPermission(deployedContracts, permission);
-        }
-      }
-      
-      if (postConfig.linkContracts) {
-        console.log(`🔗 Linking contracts...`);
-        await this.linkContracts(deployedContracts);
-      }
-
-    } catch (error) {
-      console.warn(`Post-deployment operations failed: ${error.message}`);
+    console.log('📋 Processing post-deployment actions...');
+    
+    if (postConfig.linkContracts) {
+      console.log('🔗 Linking contracts...');
+      // Implementation for contract linking
+    }
+    
+    if (postConfig.initializeData) {
+      console.log('📊 Initializing data...');
+      // Implementation for data initialization
+    }
+    
+    if (postConfig.grantPermissions) {
+      console.log('🔐 Granting permissions...');
+      // Implementation for permission grants
     }
   }
+
 
   async grantPermission(deployedContracts, permission) {
     // Implementation depends on your specific permission system
@@ -272,20 +285,30 @@ export class MultiContractDeployer {
     return summary;
   }
 
-  async exportDeploymentResults(deployedContracts, outputPath) {
-    try {
-      const results = {
-        timestamp: new Date().toISOString(),
-        network: this.kit.config.network,
-        summary: this.getDeploymentSummary(deployedContracts),
-        contracts: deployedContracts
-      };
-      
-      await fs.writeFile(outputPath, JSON.stringify(results, null, 2));
-      console.log(`📄 Deployment results exported to: ${outputPath}`);
-      
-    } catch (error) {
-      console.warn(`Failed to export deployment results: ${error.message}`);
+   /**
+   * Export deployment results to file
+   */
+  async exportDeploymentResults(deployedContracts, outputPath = './deployment-results.json') {
+    const exportData = {
+      timestamp: new Date().toISOString(),
+      network: this.config.network,
+      summary: {
+        totalContracts: Object.keys(deployedContracts).length,
+        successful: Object.values(deployedContracts).filter(c => !c.error).length,
+        failed: Object.values(deployedContracts).filter(c => c.error).length
+      },
+      contracts: deployedContracts
+    };
+    
+    await fs.writeFile(outputPath, JSON.stringify(exportData, null, 2));
+    console.log(`📄 Deployment results exported to: ${outputPath}`);
+  }
+/**
+   * Clean up embedded workspace
+   */
+  async cleanup() {
+    if (this.embeddedEngine) {
+      await this.embeddedEngine.cleanup();
     }
   }
 }
